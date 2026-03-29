@@ -1,0 +1,328 @@
+{% extends 'users/userbase.html' %}
+{% load static %}
+{% block title %}Dataset — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<!-- DataTables -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.min.css"/>
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+<style>
+  .dataset-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .dataset-header {
+    padding: 1.2rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.7rem;
+    flex-wrap: wrap; gap: 0.75rem;
+  }
+
+  .dataset-header h5 {
+    font-family: var(--font-head);
+    font-size: 1rem; font-weight: 800;
+    color: var(--text); margin: 0;
+  }
+
+  .dataset-header i { color: var(--primary); }
+
+  .info-pill {
+    background: rgba(0,255,198,0.08);
+    border: 1px solid rgba(0,255,198,0.18);
+    border-radius: 999px;
+    padding: 0.2rem 0.75rem;
+    font-size: 0.72rem; font-weight: 600;
+    color: var(--primary); letter-spacing: 0.04em;
+  }
+
+  /* DataTables overrides to match theme */
+  .dataTables_wrapper {
+    padding: 1.2rem 1.5rem;
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+  }
+
+  .dataTables_filter input,
+  .dataTables_length select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text) !important;
+    padding: 0.35rem 0.75rem !important;
+    outline: none !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.83rem !important;
+  }
+
+  .dataTables_filter input:focus {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(0,255,198,0.1) !important;
+  }
+
+  .dataTables_filter label,
+  .dataTables_length label {
+    color: var(--text-muted);
+  }
+
+  .dataTables_info,
+  .dataTables_paginate {
+    color: var(--text-muted) !important;
+    font-size: 0.8rem;
+    margin-top: 1rem !important;
+  }
+
+  .dataTables_paginate .paginate_button {
+    background: var(--glass) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 7px !important;
+    color: var(--text) !important;
+    margin: 0 2px !important;
+    padding: 0.3rem 0.7rem !important;
+    font-size: 0.8rem !important;
+    cursor: pointer;
+    transition: all 0.18s !important;
+  }
+
+  .dataTables_paginate .paginate_button:hover {
+    background: rgba(0,255,198,0.1) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+  }
+
+  .dataTables_paginate .paginate_button.current {
+    background: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #050b18 !important;
+    font-weight: 700 !important;
+  }
+
+  .dataTables_paginate .paginate_button.disabled {
+    opacity: 0.3 !important;
+    cursor: not-allowed !important;
+  }
+
+  /* Table styles */
+  table.dataTable {
+    border-collapse: separate !important;
+    border-spacing: 0 !important;
+    width: 100% !important;
+  }
+
+  table.dataTable thead th {
+    background: rgba(0,255,198,0.05) !important;
+    color: var(--text-muted) !important;
+    font-size: 0.72rem !important;
+    letter-spacing: 0.08em !important;
+    text-transform: uppercase !important;
+    font-weight: 600 !important;
+    border-bottom: 1px solid var(--border) !important;
+    border-top: none !important;
+    padding: 0.8rem 1rem !important;
+  }
+
+  table.dataTable thead th.sorting::after,
+  table.dataTable thead th.sorting_asc::after,
+  table.dataTable thead th.sorting_desc::after {
+    color: var(--primary) !important;
+  }
+
+  table.dataTable tbody tr {
+    background: transparent !important;
+    transition: background 0.15s;
+  }
+
+  table.dataTable tbody tr:hover {
+    background: rgba(0,255,198,0.03) !important;
+  }
+
+  table.dataTable tbody td {
+    color: var(--text) !important;
+    border-bottom: 1px solid rgba(0,255,198,0.05) !important;
+    border-top: none !important;
+    padding: 0.75rem 1rem !important;
+    font-size: 0.84rem !important;
+    max-width: 400px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .cat-spam {
+    background: rgba(255,77,109,0.12); color: #ff7f99;
+    border: 1px solid rgba(255,77,109,0.22);
+    border-radius: 999px; padding: 0.18em 0.7em;
+    font-size: 0.72rem; font-weight: 700;
+  }
+
+  .cat-ham {
+    background: rgba(0,255,198,0.1); color: var(--primary);
+    border: 1px solid rgba(0,255,198,0.22);
+    border-radius: 999px; padding: 0.18em 0.7em;
+    font-size: 0.72rem; font-weight: 700;
+  }
+
+  /* Fallback: raw data view */
+  .raw-data {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    overflow-x: auto;
+    max-height: 70vh;
+    overflow-y: auto;
+  }
+
+  .raw-data pre {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    margin: 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* Stats bar */
+  .ds-stats {
+    display: flex; flex-wrap: wrap; gap: 1rem;
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .ds-stat {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.82rem;
+  }
+
+  .ds-stat i { color: var(--primary); }
+  .ds-stat span { color: var(--text-muted); }
+  .ds-stat strong { color: var(--text); }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">Dataset Explorer</div>
+<div class="page-subtitle">Browse the SMS spam training dataset used to build our ML models</div>
+
+<div class="dataset-card">
+
+  <div class="dataset-header">
+    <i class="bi bi-table"></i>
+    <h5>SMS Spam Dataset</h5>
+    <span class="info-pill"><i class="bi bi-cpu me-1"></i>balanced_spam_dataset.csv</span>
+    <span class="ms-auto" style="font-size:0.78rem; color:var(--text-muted);">
+      Scroll horizontally on mobile
+    </span>
+  </div>
+
+  <div class="ds-stats">
+    <div class="ds-stat"><i class="bi bi-file-earmark-text"></i><span>Source:</span><strong>balanced_spam_dataset.csv</strong></div>
+    <div class="ds-stat"><i class="bi bi-columns"></i><span>Columns:</span><strong>Category, Message</strong></div>
+    <div class="ds-stat"><i class="bi bi-shield-exclamation"></i><span>Labels:</span><strong>spam / ham (non-spam)</strong></div>
+    <div class="ds-stat"><i class="bi bi-braces"></i><span>Vectorization:</span><strong>TF-IDF (10k features)</strong></div>
+  </div>
+
+  <!-- Check if data is a callable (the bug in views.py: df.to_html not df.to_html()) -->
+  {% if data %}
+    {% if "<table" in data|safe %}
+      <!-- DataTable render -->
+      <div class="dataTables_wrapper" style="padding: 0;">
+        <div style="padding: 1.2rem 1.5rem 0; display:flex; gap:1rem; flex-wrap:wrap; align-items:center;">
+          <div id="dt-length" style="display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:0.82rem; color:var(--text-muted);">Show</span>
+            <select id="rowLimit" class="dataTables_length" style="background:rgba(255,255,255,0.05)!important;border:1px solid var(--border)!important;border-radius:8px!important;color:var(--text)!important;padding:0.3rem 0.6rem!important;font-family:var(--font-body)!important;font-size:0.82rem!important;">
+              <option value="25">25</option>
+              <option value="50" selected>50</option>
+              <option value="100">100</option>
+            </select>
+            <span style="font-size:0.82rem; color:var(--text-muted);">rows</span>
+          </div>
+          <div style="margin-left:auto; display:flex; align-items:center; gap:0.5rem;">
+            <span style="font-size:0.82rem; color:var(--text-muted);">Search:</span>
+            <input type="search" id="dtSearch" class="sss-input" style="width:220px;padding:0.35rem 0.75rem!important;" placeholder="Filter messages..."/>
+          </div>
+        </div>
+
+        <div style="overflow-x: auto; padding: 1rem 1.5rem;">
+          {{ data|safe }}
+        </div>
+      </div>
+    {% else %}
+      <!-- Raw / pre-formatted fallback -->
+      <div style="padding: 1.2rem 1.5rem;">
+        <div class="raw-data">
+          <pre>{{ data|safe }}</pre>
+        </div>
+      </div>
+    {% endif %}
+  {% else %}
+    <div style="padding: 3rem 1.5rem; text-align: center;">
+      <i class="bi bi-exclamation-circle" style="font-size:2.5rem; color:var(--border); display:block; margin-bottom:0.75rem;"></i>
+      <p style="color:var(--text-muted); font-size:0.88rem; margin-bottom:1rem;">
+        Dataset not loaded. Make sure <code style="color:var(--primary)">balanced_spam_dataset.csv</code> is in the media directory
+        and the view calls <code style="color:var(--primary)">df.to_html()</code> (with parentheses).
+      </p>
+      <div class="sss-alert sss-alert-warn" style="max-width:520px; margin:0 auto; text-align:left;">
+        <i class="bi bi-wrench-adjustable-circle-fill"></i>
+        <div>
+          <strong>Fix in views.py:</strong><br>
+          Change <code>df = df.to_html</code> → <code>df = df.to_html()</code>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  $(document).ready(function () {
+    // Only init DataTables if there's a table rendered
+    if ($('.dataset-card table').length) {
+      const table = $('.dataset-card table').DataTable({
+        pageLength: 50,
+        lengthChange: false,
+        searching: true,
+        ordering: true,
+        info: true,
+        pagingType: 'simple_numbers',
+        language: {
+          search: '',
+          searchPlaceholder: 'Filter...',
+          info: 'Showing _START_ to _END_ of _TOTAL_ records',
+          paginate: { previous: '←', next: '→' }
+        }
+      });
+
+      // Wire custom search
+      $('#dtSearch').on('keyup', function() {
+        table.search(this.value).draw();
+      });
+
+      // Wire custom row limit
+      $('#rowLimit').on('change', function() {
+        table.page.len(parseInt(this.value)).draw();
+      });
+
+      // Style the category column badges
+      $('.dataset-card table tbody tr').each(function() {
+        const firstTd = $(this).find('td').first();
+        if (firstTd.text().trim().toLowerCase() === 'spam') {
+          firstTd.html('<span class="cat-spam">Spam</span>');
+        } else if (firstTd.text().trim().toLowerCase() !== '') {
+          firstTd.html('<span class="cat-ham">Ham</span>');
+        }
+      });
+    }
+  });
+</script>
+{% endblock %}

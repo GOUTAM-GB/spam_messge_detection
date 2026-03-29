@@ -1,0 +1,844 @@
+{% extends 'users/userbase.html' %}
+{% load static %}
+{% block title %}Detect Spam — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Result banner */
+  .result-banner {
+    border-radius: 16px; padding: 1.5rem 1.8rem;
+    margin-bottom: 1.5rem; display: flex;
+    align-items: center; gap: 1.2rem;
+    animation: fadeUp 0.4s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-banner.spam {
+    background: rgba(255,77,109,0.1);
+    border: 1px solid rgba(255,77,109,0.3);
+  }
+
+  .result-banner.safe {
+    background: rgba(0,255,198,0.08);
+    border: 1px solid rgba(0,255,198,0.25);
+  }
+
+  .result-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem; flex-shrink: 0;
+  }
+
+  .result-banner.spam .result-icon  { background: rgba(255,77,109,0.15); color: #ff4d6d; }
+  .result-banner.safe .result-icon  { background: rgba(0,255,198,0.12);  color: var(--primary); }
+
+  .result-title {
+    font-family: var(--font-head);
+    font-size: 1.3rem; font-weight: 800; margin-bottom: 0.15rem;
+  }
+
+  .result-banner.spam .result-title { color: #ff4d6d; }
+  .result-banner.safe .result-title { color: var(--primary); }
+  .result-subtitle { font-size: 0.83rem; color: var(--text-muted); }
+
+  /* Main cards */
+  .predict-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+    height: 100%;
+  }
+
+  .predict-card-header {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+
+  .predict-card-header h5 {
+    font-family: var(--font-head);
+    font-size: 0.95rem; font-weight: 800;
+    color: var(--text); margin: 0;
+  }
+
+  .predict-card-header i { color: var(--primary); }
+
+  .predict-card-body { padding: 1.4rem; }
+
+  /* Text area */
+  .sss-textarea {
+    background: rgba(255,255,255,0.04) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    color: var(--text) !important;
+    padding: 0.85rem 1rem !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.92rem !important;
+    resize: vertical; min-height: 110px; width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+    line-height: 1.6 !important;
+  }
+
+  .sss-textarea::placeholder { color: var(--text-muted) !important; }
+
+  .sss-textarea:focus {
+    outline: none !important;
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 3px rgba(0,255,198,0.1) !important;
+    background: rgba(0,255,198,0.02) !important;
+  }
+
+  /* File input */
+  .file-drop {
+    border: 1.5px dashed var(--border);
+    border-radius: 12px;
+    padding: 1.2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    position: relative;
+  }
+
+  .file-drop:hover {
+    border-color: var(--primary);
+    background: rgba(0,255,198,0.04);
+  }
+
+  .file-drop input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+
+  .file-drop i { font-size: 1.6rem; color: var(--text-muted); margin-bottom: 0.4rem; display: block; }
+  .file-drop p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
+  .file-drop .file-name { font-size: 0.78rem; color: var(--primary); margin-top: 0.4rem; display: none; }
+
+  /* Action buttons row */
+  .action-row {
+    display: flex; flex-wrap: wrap; gap: 0.6rem;
+    align-items: center; margin-top: 1.2rem;
+  }
+
+  /* Algo selector */
+  .pred-type-tabs {
+    display: flex;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 3px; gap: 3px;
+    margin-bottom: 1.2rem;
+  }
+
+  .pred-type-tab {
+    flex: 1; padding: 0.5rem; text-align: center;
+    border-radius: 8px; font-size: 0.82rem; font-weight: 600;
+    cursor: pointer; color: var(--text-muted); transition: all 0.2s;
+    user-select: none;
+  }
+
+  .pred-type-tab.active {
+    background: var(--primary); color: #050b18;
+  }
+
+  .algo-option {
+    display: flex; align-items: center; gap: 0.6rem;
+    padding: 0.6rem 0.8rem; border-radius: 9px;
+    border: 1px solid var(--border);
+    background: var(--glass);
+    cursor: pointer; transition: all 0.18s;
+    margin-bottom: 0.5rem;
+    font-size: 0.85rem; font-weight: 500;
+    color: var(--text);
+  }
+
+  .algo-option:hover { border-color: rgba(0,255,198,0.3); }
+
+  .algo-option input { display: none; }
+
+  .algo-option .algo-dot {
+    width: 16px; height: 16px; border-radius: 50%;
+    border: 2px solid var(--border);
+    flex-shrink: 0; transition: all 0.18s;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .algo-option.selected {
+    border-color: var(--primary);
+    background: rgba(0,255,198,0.07);
+  }
+
+  .algo-option.selected .algo-dot {
+    border-color: var(--primary);
+    background: var(--primary);
+  }
+
+  .algo-option.selected .algo-dot::after {
+    content: '';
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #050b18;
+  }
+
+  /* Camera section */
+  .camera-section {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.2rem;
+    margin-top: 1rem;
+  }
+
+  .camera-header {
+    display: flex; align-items: center; gap: 0.7rem;
+    margin-bottom: 1rem;
+  }
+
+  .cam-status-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--text-muted);
+    transition: background 0.3s;
+    flex-shrink: 0;
+  }
+
+  .cam-status-dot.live {
+    background: #00ff88;
+    box-shadow: 0 0 8px #00ff88;
+    animation: livePulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes livePulse {
+    0%, 100% { box-shadow: 0 0 8px #00ff88; }
+    50%       { box-shadow: 0 0 16px #00ff88; }
+  }
+
+  .video-wrap {
+    border-radius: 10px; overflow: hidden;
+    background: #000; position: relative;
+  }
+
+  #video { width: 100%; max-height: 320px; object-fit: contain; display: block; }
+  #output_canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+
+  /* Risk badge */
+  .risk-badge {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    border-radius: 999px; font-size: 0.75rem; font-weight: 700;
+    padding: 0.25em 0.85em; letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .risk-badge.low    { background: rgba(0,255,136,0.12); color: #00ff88; border: 1px solid rgba(0,255,136,0.25); }
+  .risk-badge.medium { background: rgba(244,160,39,0.12); color: var(--warn); border: 1px solid rgba(244,160,39,0.25); }
+  .risk-badge.high   { background: rgba(255,77,109,0.12); color: #ff4d6d; border: 1px solid rgba(255,77,109,0.25); }
+
+  /* Behavioral signals */
+  .signal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.8rem; }
+
+  .signal-item {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 8px; padding: 0.5rem 0.7rem;
+    font-size: 0.75rem; color: var(--text-muted);
+    display: flex; align-items: center; gap: 0.4rem;
+    transition: all 0.2s;
+  }
+
+  .signal-item.active {
+    border-color: rgba(255,77,109,0.3);
+    background: rgba(255,77,109,0.07);
+    color: #ff7f99;
+  }
+
+  .signal-dot-sm {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--text-muted); flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .signal-item.active .signal-dot-sm { background: #ff4d6d; }
+
+  /* Extracted text */
+  .extracted-box {
+    background: rgba(0,255,198,0.05);
+    border: 1px solid rgba(0,255,198,0.15);
+    border-radius: 10px; padding: 0.85rem 1rem;
+    font-size: 0.83rem; color: var(--text-muted);
+    margin-top: 1rem; font-style: italic;
+  }
+
+  .extracted-box strong { color: var(--primary); font-style: normal; }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">Spam Detection</div>
+<div class="page-subtitle">Type, speak, upload a screenshot, or use live camera to detect spam</div>
+
+<!-- ── Result Banner ── -->
+{% if output %}
+  <div class="result-banner {% if output == 'spam' %}spam{% else %}safe{% endif %}">
+    <div class="result-icon">
+      {% if output == 'spam' %}
+        <i class="bi bi-shield-exclamation"></i>
+      {% else %}
+        <i class="bi bi-shield-check"></i>
+      {% endif %}
+    </div>
+    <div>
+      <div class="result-title">
+        {% if output == 'spam' %}⚠ SPAM DETECTED{% else %}✓ MESSAGE IS SAFE{% endif %}
+      </div>
+      <div class="result-subtitle">
+        {% if output == 'spam' %}
+          This message has been flagged as spam or a scam attempt. Do not interact with it.
+        {% else %}
+          No spam signals detected. This message appears to be legitimate.
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  {% if extracted_text %}
+  <div class="extracted-box">
+    <strong><i class="bi bi-camera me-1"></i>OCR Extracted Text:</strong><br>
+    {{ extracted_text }}
+  </div>
+  {% endif %}
+{% endif %}
+
+<form action="{% url 'prediction' %}" method="post" enctype="multipart/form-data" id="predForm">
+  {% csrf_token %}
+  <input type="hidden" name="input_source" id="inputTypeHidden" value="text"/>
+  <input type="hidden" name="camera_data" id="cameraData"/>
+
+  <div class="row g-4">
+
+    <!-- ── Left: Input Panel ── -->
+    <div class="col-lg-8">
+      <div class="predict-card">
+        <div class="predict-card-header">
+          <i class="bi bi-shield-check"></i>
+          <h5>Message Input</h5>
+        </div>
+        <div class="predict-card-body">
+
+          <!-- Text input -->
+          <div class="mb-3">
+            <label class="sss-label">Message Text</label>
+            <textarea name="tweets" id="tweetInput" class="sss-textarea"
+                      placeholder="Paste or type the SMS message to analyze..."></textarea>
+          </div>
+
+          <!-- File upload -->
+          <div class="mb-3">
+            <label class="sss-label">Screenshot / Image (Optional — OCR will extract text)</label>
+            <div class="file-drop" id="fileDrop">
+              <input type="file" name="screenshot" id="screenshotInput" accept="image/*"
+                     onchange="handleFileSelect(this)"/>
+              <i class="bi bi-cloud-upload"></i>
+              <p>Drop an image here or click to browse</p>
+              <div class="file-name" id="fileName"></div>
+            </div>
+          </div>
+
+          <!-- Action buttons -->
+          <div class="action-row">
+            <button type="button" class="btn-sss-outline" id="startRecordBtn">
+              <i class="bi bi-mic"></i> Start Voice
+            </button>
+            <button type="button" class="btn-sss-danger" id="stopRecordBtn" disabled>
+              <i class="bi bi-stop-circle"></i> Stop Voice
+            </button>
+            <button type="button" class="btn-sss-outline" id="openCameraBtn">
+              <i class="bi bi-camera-video"></i> Live Detection
+            </button>
+            <button type="submit" class="btn-sss ms-auto" id="submitBtn">
+              <i class="bi bi-send"></i> Detect Spam
+            </button>
+          </div>
+
+          <!-- Camera section (hidden by default) -->
+          <div class="camera-section" id="cameraSection" style="display:none;">
+            <div class="camera-header">
+              <div class="cam-status-dot" id="camStatusDot"></div>
+              <div style="flex:1;">
+                <span style="font-size:0.88rem; font-weight:600; color:var(--text);">
+                  Live Behavioral Pipeline
+                </span>
+                <span class="risk-badge low ms-2" id="riskBadge">Idle</span>
+              </div>
+              <span id="riskLevelText" style="font-size:0.78rem; color:var(--text-muted);">ANALYZING...</span>
+            </div>
+
+            <!-- Video -->
+            <div class="video-wrap mb-3">
+              <video id="video" autoplay playsinline></video>
+              <canvas id="output_canvas"></canvas>
+            </div>
+
+            <canvas id="canvas" style="display:none;"></canvas>
+
+            <!-- Behavioral signals -->
+            <div class="signal-grid">
+              <div class="signal-item" id="sigSpeech">
+                <div class="signal-dot-sm"></div> Speech: Normal
+              </div>
+              <div class="signal-item" id="sigReading">
+                <div class="signal-dot-sm"></div> Reading: No
+              </div>
+              <div class="signal-item" id="sigEmotion">
+                <div class="signal-dot-sm"></div> Emotion: Stable
+              </div>
+              <div class="signal-item" id="sigIdentity">
+                <div class="signal-dot-sm"></div> Identity: Secure
+              </div>
+            </div>
+
+            <!-- Camera controls -->
+            <div class="action-row mt-3">
+              <button type="button" class="btn-sss" id="startVideoBtn">
+                <i class="bi bi-play-circle"></i> Start Video
+              </button>
+              <button type="button" class="btn-sss-danger" id="stopVideoBtn" style="display:none;">
+                <i class="bi bi-stop-circle"></i> Stop Video
+              </button>
+              <button type="button" class="btn-sss-outline" id="capturePredictBtn">
+                <i class="bi bi-lightning"></i> Capture & Analyze
+              </button>
+              <button type="button" class="btn-sss-outline" id="hideCameraBtn" style="margin-left:auto;">
+                <i class="bi bi-x-lg"></i> Hide
+              </button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Right: Algorithm Selector ── -->
+    <div class="col-lg-4">
+      <div class="predict-card">
+        <div class="predict-card-header">
+          <i class="bi bi-cpu"></i>
+          <h5>Classification Logic</h5>
+        </div>
+        <div class="predict-card-body">
+
+          <!-- Prediction type tabs -->
+          <div class="pred-type-tabs">
+            <div class="pred-type-tab active" id="tabSingle" onclick="switchPredType('single')">
+              Single
+            </div>
+            <div class="pred-type-tab" id="tabHybrid" onclick="switchPredType('hybrid')">
+              Hybrid
+            </div>
+          </div>
+
+          <!-- Single algo selector -->
+          <div id="singleDiv">
+            <label class="sss-label mb-2">Choose Algorithm</label>
+
+            <label class="algo-option selected" id="opt-nb" onclick="selectSingleAlgo('nb')">
+              <input type="radio" name="single_algo" value="nb" checked/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-diagram-3" style="color:var(--primary)"></i>
+              Naive Bayes
+            </label>
+
+            <label class="algo-option" id="opt-svm" onclick="selectSingleAlgo('svm')">
+              <input type="radio" name="single_algo" value="svm"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-vector-pen" style="color:#80aaff"></i>
+              SVM (Linear)
+            </label>
+
+            <label class="algo-option" id="opt-lr" onclick="selectSingleAlgo('lr')">
+              <input type="radio" name="single_algo" value="lr"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-activity" style="color:var(--warn)"></i>
+              Logistic Regression
+            </label>
+
+            <label class="algo-option" id="opt-rf" onclick="selectSingleAlgo('rf')">
+              <input type="radio" name="single_algo" value="rf"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-tree" style="color:#34d399"></i>
+              Random Forest
+            </label>
+
+            <label class="algo-option" id="opt-kmeans" onclick="selectSingleAlgo('kmeans')">
+              <input type="radio" name="single_algo" value="kmeans"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-grid-3x3-gap" style="color:#f472b6"></i>
+              K-Means
+            </label>
+          </div>
+
+          <!-- Hybrid selector -->
+          <div id="hybridDiv" style="display:none;">
+            <label class="sss-label mb-2">Select Multiple Algorithms</label>
+
+            <label class="algo-option selected" id="h-nb" onclick="toggleHybrid(this)">
+              <input type="checkbox" name="hybrid_algos" value="nb" checked/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-diagram-3" style="color:var(--primary)"></i>
+              Naive Bayes
+            </label>
+
+            <label class="algo-option" id="h-svm" onclick="toggleHybrid(this)">
+              <input type="checkbox" name="hybrid_algos" value="svm"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-vector-pen" style="color:#80aaff"></i>
+              SVM
+            </label>
+
+            <label class="algo-option" id="h-lr" onclick="toggleHybrid(this)">
+              <input type="checkbox" name="hybrid_algos" value="lr"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-activity" style="color:var(--warn)"></i>
+              Logistic Regression
+            </label>
+
+            <label class="algo-option" id="h-rf" onclick="toggleHybrid(this)">
+              <input type="checkbox" name="hybrid_algos" value="rf"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-tree" style="color:#34d399"></i>
+              Random Forest
+            </label>
+
+            <label class="algo-option" id="h-kmeans" onclick="toggleHybrid(this)">
+              <input type="checkbox" name="hybrid_algos" value="kmeans"/>
+              <div class="algo-dot"></div>
+              <i class="bi bi-grid-3x3-gap" style="color:#f472b6"></i>
+              K-Means
+            </label>
+
+            <div class="sss-alert sss-alert-info mt-3" style="font-size:0.78rem;">
+              <i class="bi bi-info-circle-fill"></i>
+              <span>Majority vote decides the final result in hybrid mode.</span>
+            </div>
+          </div>
+
+          <!-- Hidden pred type -->
+          <input type="hidden" name="pred_type" id="predTypeInput" value="single"/>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Algo Selectors ──
+  function switchPredType(type) {
+    const isSingle = type === 'single';
+    document.getElementById('tabSingle').classList.toggle('active', isSingle);
+    document.getElementById('tabHybrid').classList.toggle('active', !isSingle);
+    document.getElementById('singleDiv').style.display = isSingle ? 'block' : 'none';
+    document.getElementById('hybridDiv').style.display = isSingle ? 'none'  : 'block';
+    document.getElementById('predTypeInput').value = type;
+  }
+
+  const singleAlgos = ['nb', 'svm', 'lr', 'rf', 'kmeans'];
+
+  function selectSingleAlgo(val) {
+    singleAlgos.forEach(id => {
+      const el = document.getElementById('opt-' + id);
+      el.classList.toggle('selected', id === val);
+      el.querySelector('input').checked = (id === val);
+    });
+  }
+
+  function toggleHybrid(el) {
+    const cb = el.querySelector('input[type=checkbox]');
+    setTimeout(() => {
+      el.classList.toggle('selected', cb.checked);
+    }, 0);
+  }
+
+  // ── File Select ──
+  function handleFileSelect(input) {
+    const fn = document.getElementById('fileName');
+    if (input.files && input.files[0]) {
+      fn.textContent = '✓ ' + input.files[0].name;
+      fn.style.display = 'block';
+      document.getElementById('inputTypeHidden').value = 'image';
+    }
+  }
+
+  // ── Voice Recognition ──
+  const startRecordBtn = document.getElementById('startRecordBtn');
+  const stopRecordBtn  = document.getElementById('stopRecordBtn');
+  const tweetInput     = document.getElementById('tweetInput');
+  let recognition;
+
+  window.behavioralMeta = {
+    voiceStress: 0, readingCount: 0, lastVoiceTime: Date.now(),
+    hesitationCount: 0, suspiciousKeywords: 0, jitterScore: 0, symmetryDeviation: 0
+  };
+
+  const SCAM_KEYWORDS = ['bank','password','urgent','transfer','verify','account','login','otp','police','winning','prize','security','tax'];
+
+  if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognition = new SR();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    let finalBuf = '';
+
+    recognition.onstart = () => {
+      startRecordBtn.disabled = true;
+      startRecordBtn.innerHTML = '<i class="bi bi-mic-fill"></i> Listening...';
+      stopRecordBtn.disabled = false;
+      document.getElementById('inputTypeHidden').value = 'voice';
+      window.behavioralMeta.lastVoiceTime = Date.now();
+    };
+
+    recognition.onresult = (e) => {
+      const now = Date.now();
+      if (now - window.behavioralMeta.lastVoiceTime > 2000)
+        window.behavioralMeta.hesitationCount++;
+      window.behavioralMeta.lastVoiceTime = now;
+
+      let interim = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const t = e.results[i][0].transcript.toLowerCase();
+        if (e.results[i].isFinal) {
+          finalBuf += e.results[i][0].transcript + ' ';
+          SCAM_KEYWORDS.forEach(kw => { if (t.includes(kw)) window.behavioralMeta.suspiciousKeywords++; });
+        } else {
+          interim += e.results[i][0].transcript;
+        }
+      }
+      tweetInput.value = (window._baseText || '') + finalBuf + interim;
+    };
+
+    recognition.onend = () => {
+      startRecordBtn.disabled = false;
+      startRecordBtn.innerHTML = '<i class="bi bi-mic"></i> Start Voice';
+      stopRecordBtn.disabled = true;
+    };
+
+    startRecordBtn.addEventListener('click', () => {
+      window._baseText = tweetInput.value;
+      finalBuf = '';
+      try { recognition.start(); } catch(e) {}
+    });
+
+    stopRecordBtn.addEventListener('click', () => recognition.stop());
+  } else {
+    startRecordBtn.addEventListener('click', () =>
+      alert('Speech recognition not supported in this browser. Try Chrome.'));
+  }
+
+  // ── Camera ──
+  const cameraSection  = document.getElementById('cameraSection');
+  const openCameraBtn  = document.getElementById('openCameraBtn');
+  const hideCameraBtn  = document.getElementById('hideCameraBtn');
+  const startVideoBtn  = document.getElementById('startVideoBtn');
+  const stopVideoBtn   = document.getElementById('stopVideoBtn');
+  const capturePredictBtn = document.getElementById('capturePredictBtn');
+  const video          = document.getElementById('video');
+  const outputCanvas   = document.getElementById('output_canvas');
+  const camStatusDot   = document.getElementById('camStatusDot');
+  const riskBadge      = document.getElementById('riskBadge');
+  const riskLevelText  = document.getElementById('riskLevelText');
+
+  let stream = null;
+  let isDetecting = false;
+  let faceLandmarker = null;
+  let riskHistory = [];
+  let finalRiskLevel = 'LOW';
+  let eyePositions = [];
+  let lastLandmarks = null;
+  let jitterBuffer = [];
+
+  openCameraBtn.addEventListener('click', () => {
+    cameraSection.style.display = 'block';
+    cameraSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+
+  hideCameraBtn.addEventListener('click', () => {
+    cameraSection.style.display = 'none';
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    isDetecting = false;
+  });
+
+  startVideoBtn.addEventListener('click', async () => {
+    try {
+      if (!faceLandmarker) await initFaceLandmarker();
+      stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      video.srcObject = stream;
+      video.play();
+      startVideoBtn.style.display = 'none';
+      stopVideoBtn.style.display  = 'inline-flex';
+      camStatusDot.classList.add('live');
+      isDetecting = true;
+      riskHistory = []; eyePositions = []; lastLandmarks = null; jitterBuffer = [];
+      video.onloadedmetadata = () => predictLoop();
+    } catch (err) {
+      alert('Camera access denied or unavailable.');
+    }
+  });
+
+  stopVideoBtn.addEventListener('click', () => {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    isDetecting = false;
+    camStatusDot.classList.remove('live');
+    stopVideoBtn.style.display  = 'none';
+    startVideoBtn.style.display = 'inline-flex';
+    startVideoBtn.innerHTML = '<i class="bi bi-play-circle"></i> New Scan';
+    tweetInput.value = `[Behavioral Risk Output: ${finalRiskLevel}]\n` + tweetInput.value;
+  });
+
+  capturePredictBtn.addEventListener('click', () => {
+    if (!stream || !video.videoWidth) { document.getElementById('predForm').submit(); return; }
+    const tmp = document.createElement('canvas');
+    tmp.width  = video.videoWidth;
+    tmp.height = video.videoHeight;
+    tmp.getContext('2d').drawImage(video, 0, 0);
+    document.getElementById('cameraData').value = tmp.toDataURL('image/jpeg', 0.85);
+    document.getElementById('inputTypeHidden').value = 'vdo based';
+    document.getElementById('predForm').submit();
+  });
+
+  async function initFaceLandmarker() {
+    const { FaceLandmarker, FilesetResolver } = await import(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/vision_bundle.mjs'
+    );
+    const res = await FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.3/wasm'
+    );
+    faceLandmarker = await FaceLandmarker.createFromOptions(res, {
+      baseOptions: {
+        modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task',
+        delegate: 'GPU'
+      },
+      outputFaceBlendshapes: true,
+      runningMode: 'VIDEO',
+      numFaces: 1
+    });
+  }
+
+  let lastVideoTime = -1;
+
+  async function predictLoop() {
+    if (!video.videoWidth || !isDetecting) return;
+    outputCanvas.width  = video.videoWidth;
+    outputCanvas.height = video.videoHeight;
+
+    if (faceLandmarker && lastVideoTime !== video.currentTime) {
+      lastVideoTime = video.currentTime;
+      const res = faceLandmarker.detectForVideo(video, performance.now());
+      if (res.faceLandmarks?.[0]) processSignals(res.faceLandmarks[0], res.faceBlendshapes?.[0]);
+    }
+
+    if (isDetecting) requestAnimationFrame(predictLoop);
+  }
+
+  function processSignals(landmarks, blendshapes) {
+    let pts = 0;
+
+    // Script reading (horizontal eye movement)
+    eyePositions.push(landmarks[33].x);
+    if (eyePositions.length > 60) {
+      eyePositions.shift();
+      const diff = Math.abs(eyePositions[0] - eyePositions[eyePositions.length - 1]);
+      const sigR = document.getElementById('sigReading');
+      if (diff > 0.05) {
+        window.behavioralMeta.readingCount++;
+        sigR.textContent = 'Reading: Probable';
+        sigR.classList.add('active');
+        pts += 30;
+      } else {
+        sigR.textContent = 'Reading: No';
+        sigR.classList.remove('active');
+      }
+    }
+
+    // Jitter / identity
+    if (lastLandmarks) {
+      let j = 0;
+      [1,33,263,61,291].forEach(i => {
+        j += Math.sqrt(
+          Math.pow(landmarks[i].x - lastLandmarks[i].x, 2) +
+          Math.pow(landmarks[i].y - lastLandmarks[i].y, 2)
+        );
+      });
+      jitterBuffer.push(j);
+      if (jitterBuffer.length > 30) jitterBuffer.shift();
+      const avgJ = jitterBuffer.reduce((a,b)=>a+b,0)/jitterBuffer.length;
+      const sigId = document.getElementById('sigIdentity');
+      if (avgJ > 0.015) {
+        sigId.textContent = 'Identity: Anomaly';
+        sigId.classList.add('active'); pts += 25;
+      } else {
+        sigId.textContent = 'Identity: Secure';
+        sigId.classList.remove('active');
+      }
+    }
+    lastLandmarks = JSON.parse(JSON.stringify(landmarks));
+
+    // Emotion
+    if (blendshapes) {
+      const get = n => blendshapes.categories.find(c=>c.categoryName===n)?.score||0;
+      const smile = (get('mouthSmileLeft')+get('mouthSmileRight'))/2;
+      const brow  = (get('browDownLeft')+get('browDownRight'))/2;
+      const sigE  = document.getElementById('sigEmotion');
+      if (smile > 0.4 && brow > 0.4) {
+        sigE.textContent = 'Emotion: Conflict';
+        sigE.classList.add('active'); pts += 20;
+      } else {
+        sigE.textContent = 'Emotion: Stable';
+        sigE.classList.remove('active');
+      }
+    }
+
+    // Speech
+    const sigS = document.getElementById('sigSpeech');
+    if (window.behavioralMeta.suspiciousKeywords > 0 || window.behavioralMeta.voiceStress > 1) {
+      sigS.textContent = `Speech: ${window.behavioralMeta.suspiciousKeywords > 2 ? 'High Risk' : 'Suspicious'}`;
+      sigS.classList.add('active');
+      pts += window.behavioralMeta.suspiciousKeywords * 15;
+    } else {
+      sigS.textContent = 'Speech: Normal';
+      sigS.classList.remove('active');
+    }
+
+    updateRisk(pts);
+  }
+
+  function updateRisk(pts) {
+    riskHistory.push(pts);
+    if (riskHistory.length > 100) riskHistory.shift();
+    const avg = riskHistory.reduce((a,b)=>a+b,0)/riskHistory.length;
+
+    if (avg > 60) {
+      finalRiskLevel = 'HIGH';
+      riskBadge.className = 'risk-badge high';
+      riskBadge.textContent = 'High Risk';
+      riskLevelText.style.color = '#ff4d6d';
+      riskLevelText.textContent = 'HIGH SCAM RISK';
+    } else if (avg > 25) {
+      finalRiskLevel = 'MEDIUM';
+      riskBadge.className = 'risk-badge medium';
+      riskBadge.textContent = 'Med Risk';
+      riskLevelText.style.color = 'var(--warn)';
+      riskLevelText.textContent = 'MEDIUM RISK';
+    } else {
+      finalRiskLevel = 'LOW';
+      riskBadge.className = 'risk-badge low';
+      riskBadge.textContent = 'Low Risk';
+      riskLevelText.style.color = '#00ff88';
+      riskLevelText.textContent = 'RISK: LOW';
+    }
+  }
+</script>
+{% endblock %}

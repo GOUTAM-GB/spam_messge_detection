@@ -1,0 +1,199 @@
+{% extends 'admins/adminbase.html' %}
+{% load static %}
+{% block title %}Activity Log — Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+  .log-filter-bar {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem 1.4rem;
+    margin-bottom: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+  }
+
+  .search-box {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 9px; padding: 0.38rem 0.9rem;
+    transition: border-color 0.18s; flex: 1; min-width: 180px;
+  }
+
+  .search-box:focus-within { border-color: var(--admin-accent); }
+  .search-box i { color: var(--text-muted); font-size: 0.85rem; }
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body); font-size: 0.83rem; width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  .filter-select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text) !important;
+    padding: 0.38rem 0.75rem !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    cursor: pointer; outline: none !important;
+  }
+
+  .filter-select option { background: #06101e; }
+  .filter-select:focus { border-color: var(--admin-accent) !important; }
+
+  .log-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 16px; overflow: hidden;
+  }
+
+  .log-card .card-hdr {
+    padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  }
+
+  .log-card .card-hdr h5 {
+    font-family: var(--font-head); font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 0;
+  }
+
+  .log-card .card-hdr i { color: var(--admin-accent); }
+
+  .badge-role-admin { background: rgba(0,229,255,0.1); color: var(--admin-accent); border: 1px solid rgba(0,229,255,0.22); border-radius: 999px; padding: 0.2em 0.7em; font-size: 0.72rem; font-weight: 700; }
+  .badge-role-user  { background: rgba(0,255,198,0.1); color: var(--primary);      border: 1px solid rgba(0,255,198,0.22); border-radius: 999px; padding: 0.2em 0.7em; font-size: 0.72rem; font-weight: 700; }
+
+  .time-cell { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+
+  .online-dot {
+    display: inline-block;
+    width: 7px; height: 7px; border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 0 6px var(--primary);
+    margin-right: 5px;
+    animation: onlineP 2s ease-in-out infinite;
+  }
+
+  @keyframes onlineP { 0%,100%{opacity:1}50%{opacity:0.4} }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .empty-state i { font-size: 2.5rem; color: var(--border); display: block; margin-bottom: 0.65rem; }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">User Activity Log</div>
+<div class="page-subtitle">Complete login and logout audit trail for all users and administrators</div>
+
+<!-- Filter bar -->
+<div class="log-filter-bar">
+  <div class="search-box">
+    <i class="bi bi-search"></i>
+    <input type="text" id="searchInput" placeholder="Search by login ID or role..."/>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Role</span>
+    <select class="filter-select" id="roleFilter">
+      <option value="all">All Roles</option>
+      <option value="Admin">Admin</option>
+      <option value="User">User</option>
+    </select>
+  </div>
+
+  <span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted);">
+    <strong id="visibleCount" style="color:var(--admin-accent);">{{ data|length }}</strong> records
+  </span>
+</div>
+
+<!-- Log table -->
+<div class="log-card">
+  <div class="card-hdr">
+    <i class="bi bi-clock-history"></i>
+    <h5>Login / Logout Events</h5>
+    <span class="badge-algo ms-auto">{{ data|length }} total</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="sss-table" id="logTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Login ID</th>
+          <th>Role</th>
+          <th>Login Time</th>
+          <th>Logout Time</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="logBody">
+        {% for i in data %}
+        <tr class="log-row"
+            data-role="{{ i.user_role }}"
+            data-search="{{ i.user_loginid|lower }} {{ i.user_role|lower }}">
+          <td style="color:var(--text-muted);font-size:0.78rem;">{{ forloop.counter }}</td>
+          <td style="font-family:'Courier New',monospace;font-size:0.84rem;color:var(--admin-accent);">
+            {{ i.user_loginid }}
+          </td>
+          <td>
+            {% if i.user_role == 'Admin' %}
+              <span class="badge-role-admin"><i class="bi bi-shield-fill me-1"></i>Admin</span>
+            {% else %}
+              <span class="badge-role-user"><i class="bi bi-person me-1"></i>User</span>
+            {% endif %}
+          </td>
+          <td class="time-cell">{{ i.login_time }}</td>
+          <td class="time-cell">
+            {% if i.logout_time %}
+              {{ i.logout_time }}
+            {% else %}
+              <span class="online-dot"></span>
+              <span style="color:var(--primary);font-size:0.78rem;font-weight:600;">Active</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if not i.logout_time %}
+              <span class="badge-active">Online</span>
+            {% else %}
+              <span style="color:var(--text-muted);font-size:0.78rem;">Offline</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <i class="bi bi-clock"></i>
+              No activity logged yet.
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const role   = document.getElementById('roleFilter').value;
+    const rows   = document.querySelectorAll('.log-row');
+    let visible  = 0;
+
+    rows.forEach(row => {
+      const matchSearch = !search || row.dataset.search.includes(search);
+      const matchRole   = role === 'all' || row.dataset.role === role;
+      const show = matchSearch && matchRole;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('visibleCount').textContent = visible;
+  }
+
+  document.getElementById('searchInput').addEventListener('input',  applyFilters);
+  document.getElementById('roleFilter').addEventListener('change',  applyFilters);
+</script>
+{% endblock %}

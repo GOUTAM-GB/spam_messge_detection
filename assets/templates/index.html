@@ -1,0 +1,491 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}SpamScamShield — AI-Powered SMS Protection{% endblock %}
+
+{% block extra_head %}
+<style>
+  .hero-section {
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+    padding: 3rem 0 4rem;
+  }
+
+  /* Animated grid background */
+  .hero-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,198,0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,198,0.04) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 100%);
+    pointer-events: none;
+  }
+
+  .hero-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: rgba(0,255,198,0.08);
+    border: 1px solid rgba(0,255,198,0.2);
+    border-radius: 999px;
+    padding: 0.3rem 0.9rem;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-eyebrow .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50%       { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  .hero-title {
+    font-family: var(--font-head);
+    font-size: clamp(2.4rem, 6vw, 4.2rem);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    color: var(--text);
+    margin-bottom: 1.4rem;
+  }
+
+  .hero-title .accent { color: var(--primary); }
+  .hero-title .danger { color: var(--danger-glow); }
+
+  .hero-desc {
+    color: var(--text-muted);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    max-width: 520px;
+    margin-bottom: 2.2rem;
+  }
+
+  .hero-actions {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  /* Right: animated phone mockup */
+  .phone-wrap {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+  }
+
+  .phone-glow {
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    background: radial-gradient(circle, rgba(0,255,198,0.18), transparent 70%);
+    border-radius: 50%;
+    animation: glowPulse 3.5s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  @keyframes glowPulse {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50%       { transform: scale(1.15); opacity: 1; }
+  }
+
+  .phone-frame {
+    width: 220px;
+    background: #08121f;
+    border-radius: 36px;
+    border: 2px solid rgba(0,255,198,0.25);
+    padding: 20px 14px;
+    box-shadow:
+      0 0 0 6px rgba(0,255,198,0.04),
+      0 30px 80px rgba(0,0,0,0.6);
+    position: relative;
+    z-index: 1;
+  }
+
+  .phone-notch {
+    width: 60px;
+    height: 8px;
+    background: rgba(0,255,198,0.2);
+    border-radius: 999px;
+    margin: 0 auto 16px;
+  }
+
+  .sms-bubble {
+    border-radius: 14px;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    line-height: 1.5;
+    margin-bottom: 10px;
+    position: relative;
+    animation: slideIn 0.6s ease both;
+  }
+
+  .sms-bubble.spam {
+    background: rgba(255,77,109,0.12);
+    border: 1px solid rgba(255,77,109,0.25);
+    color: #ffaabc;
+  }
+
+  .sms-bubble.safe {
+    background: rgba(0,255,198,0.08);
+    border: 1px solid rgba(0,255,198,0.2);
+    color: #a0ffe8;
+  }
+
+  .sms-label {
+    font-size: 0.6rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .sms-label.spam { color: var(--danger-glow); }
+  .sms-label.safe { color: var(--primary); }
+
+  .sms-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 7px;
+    text-transform: uppercase;
+  }
+
+  .sms-badge.spam  { background: var(--danger-glow); color: #fff; }
+  .sms-badge.safe  { background: var(--primary);     color: #050b18; }
+
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Stats row */
+  .stats-row {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+  }
+
+  .stat-item { text-align: left; }
+  .stat-num {
+    font-family: var(--font-head);
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--primary);
+    line-height: 1;
+  }
+  .stat-label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Features section */
+  .features-section {
+    padding: 5rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .section-label {
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+  }
+
+  .section-title {
+    font-family: var(--font-head);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin-bottom: 3rem;
+  }
+
+  .feat-card {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.8rem 1.5rem;
+    transition: all 0.28s;
+    height: 100%;
+  }
+
+  .feat-card:hover {
+    border-color: rgba(0,255,198,0.35);
+    transform: translateY(-4px);
+    box-shadow: 0 12px 40px rgba(0,0,0,0.3);
+  }
+
+  .feat-icon {
+    width: 48px;
+    height: 48px;
+    background: rgba(0,255,198,0.1);
+    border: 1px solid rgba(0,255,198,0.2);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.3rem;
+    color: var(--primary);
+    margin-bottom: 1.1rem;
+  }
+
+  .feat-card h5 {
+    font-family: var(--font-head);
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.5rem;
+  }
+
+  .feat-card p {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* Algo pills */
+  .algo-section {
+    padding: 4rem 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .algo-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-top: 1.5rem;
+  }
+
+  .algo-pill {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 0.5rem 1.2rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text);
+    transition: all 0.2s;
+  }
+
+  .algo-pill:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(0,255,198,0.06);
+  }
+
+  /* CTA section */
+  .cta-section {
+    padding: 4rem 0 5rem;
+    text-align: center;
+    border-top: 1px solid var(--border);
+  }
+
+  .cta-section h2 {
+    font-family: var(--font-head);
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin-bottom: 0.8rem;
+  }
+
+  .cta-section p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+  }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<!-- ── Hero ── -->
+<section class="hero-section">
+  <div class="container">
+    <div class="row align-items-center gy-5">
+
+      <!-- Left: copy -->
+      <div class="col-lg-6">
+        <div class="hero-eyebrow">
+          <span class="dot"></span>
+          AI-Powered Detection
+        </div>
+        <h1 class="hero-title">
+          Stop <span class="danger">Spam</span> &amp;<br>
+          <span class="accent">Scam</span> Messages<br>Before They Hit.
+        </h1>
+        <p class="hero-desc">
+          SpamScamShield uses five machine-learning algorithms — Naive Bayes,
+          SVM, Logistic Regression, Random Forest, and K-Means — plus OCR
+          scanning to protect you from SMS threats in real time.
+        </p>
+        <div class="hero-actions">
+          <a href="{% url 'UserRegister' %}" class="btn-primary-sss">
+            <i class="bi bi-shield-check"></i> Get Started Free
+          </a>
+          <a href="{% url 'UnifiedLogin' %}" class="btn-outline-sss">
+            Sign In
+          </a>
+        </div>
+
+        <div class="stats-row mt-4">
+          <div class="stat-item">
+            <div class="stat-num">97%</div>
+            <div class="stat-label">Detection Accuracy</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">5</div>
+            <div class="stat-label">ML Algorithms</div>
+          </div>
+          <div class="stat-item">
+            <div class="stat-num">OCR</div>
+            <div class="stat-label">Image Scanning</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: phone mockup -->
+      <div class="col-lg-6">
+        <div class="phone-wrap">
+          <div class="phone-glow"></div>
+          <div class="phone-frame">
+            <div class="phone-notch"></div>
+
+            <div class="sms-bubble spam" style="animation-delay:0.1s">
+              <div class="sms-badge spam">Spam</div>
+              <div class="sms-label spam">Unknown Sender</div>
+              🏆 Congratulations! You've won ₹50,000. Click here to claim your prize now!
+            </div>
+
+            <div class="sms-bubble safe" style="animation-delay:0.4s">
+              <div class="sms-badge safe">Safe</div>
+              <div class="sms-label safe">Bank HDFC</div>
+              Your account statement for March 2025 is ready. Login to NetBanking to view.
+            </div>
+
+            <div class="sms-bubble spam" style="animation-delay:0.7s">
+              <div class="sms-badge spam">Spam</div>
+              <div class="sms-label spam">+91-XXXXXXXX</div>
+              URGENT: Your OTP is 847362. Do NOT share. Verify your identity immediately.
+            </div>
+
+            <!-- Scan animation bar -->
+            <div style="height: 3px; border-radius: 999px; background: linear-gradient(90deg, transparent, var(--primary), transparent); margin-top: 1rem; animation: scanBar 2s ease-in-out infinite;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<style>
+@keyframes scanBar {
+  0%   { opacity: 0.2; transform: scaleX(0.3); }
+  50%  { opacity: 1;   transform: scaleX(1); }
+  100% { opacity: 0.2; transform: scaleX(0.3); }
+}
+</style>
+
+<!-- ── Features ── -->
+<section class="features-section">
+  <div class="container">
+    <div class="section-label">What We Offer</div>
+    <div class="section-title">Everything you need to stay protected</div>
+    <div class="row g-4">
+      <div class="col-md-6 col-lg-3">
+        <div class="feat-card">
+          <div class="feat-icon"><i class="bi bi-cpu"></i></div>
+          <h5>Multi-Algorithm AI</h5>
+          <p>Five ML models work in ensemble to maximize detection accuracy across all spam types.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="feat-card">
+          <div class="feat-icon"><i class="bi bi-camera"></i></div>
+          <h5>OCR Image Scan</h5>
+          <p>Screenshot a suspicious message and our OCR engine extracts and analyzes the text instantly.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="feat-card">
+          <div class="feat-icon"><i class="bi bi-bar-chart-line"></i></div>
+          <h5>Prediction Reports</h5>
+          <p>Full history of every scan with algorithm used, result, and timestamp for complete audit trails.</p>
+        </div>
+      </div>
+      <div class="col-md-6 col-lg-3">
+        <div class="feat-card">
+          <div class="feat-icon"><i class="bi bi-people"></i></div>
+          <h5>Admin Dashboard</h5>
+          <p>Manage users, monitor activity logs, and review prediction reports from a central control panel.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Algo section ── -->
+<section class="algo-section">
+  <div class="container">
+    <div class="row align-items-center">
+      <div class="col-lg-5 mb-4 mb-lg-0">
+        <div class="section-label">Technology Stack</div>
+        <div class="section-title" style="margin-bottom:0.5rem;">Powered by proven ML algorithms</div>
+        <p style="color:var(--text-muted); font-size:0.9rem; line-height:1.7;">
+          Our hybrid fusion engine combines votes from multiple classifiers plus behavioral signal analysis, ensuring maximum resilience against evolving spam tactics.
+        </p>
+      </div>
+      <div class="col-lg-7">
+        <div class="algo-pills">
+          <span class="algo-pill"><i class="bi bi-diagram-3 me-1"></i>Naive Bayes</span>
+          <span class="algo-pill"><i class="bi bi-vector-pen me-1"></i>Support Vector Machine</span>
+          <span class="algo-pill"><i class="bi bi-activity me-1"></i>Logistic Regression</span>
+          <span class="algo-pill"><i class="bi bi-tree me-1"></i>Random Forest</span>
+          <span class="algo-pill"><i class="bi bi-grid-3x3-gap me-1"></i>K-Means Clustering</span>
+          <span class="algo-pill"><i class="bi bi-file-earmark-image me-1"></i>EasyOCR</span>
+          <span class="algo-pill"><i class="bi bi-file-text me-1"></i>TF-IDF Vectorizer</span>
+          <span class="algo-pill"><i class="bi bi-shield-lock me-1"></i>Behavioral Risk Analysis</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ── CTA ── -->
+<section class="cta-section">
+  <div class="container">
+    <h2>Ready to shield yourself?</h2>
+    <p>Join SpamScamShield and stop SMS threats before they reach you.</p>
+    <a href="{% url 'UserRegister' %}" class="btn-primary-sss" style="font-size:1rem; padding: 0.85rem 2.5rem;">
+      <i class="bi bi-shield-check"></i> Create Free Account
+    </a>
+  </div>
+</section>
+
+{% endblock %}

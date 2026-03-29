@@ -1,0 +1,306 @@
+{% extends 'admins/adminbase.html' %}
+{% load static %}
+{% block title %}Registered Users — Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+  .filter-bar {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem 1.4rem;
+    margin-bottom: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+  }
+
+  .search-box {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 9px; padding: 0.38rem 0.9rem;
+    transition: border-color 0.18s; flex: 1; min-width: 180px;
+  }
+
+  .search-box:focus-within { border-color: var(--admin-accent); }
+  .search-box i { color: var(--text-muted); font-size: 0.85rem; }
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 0.83rem; width: 100%;
+  }
+
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  .filter-select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text) !important;
+    padding: 0.38rem 0.75rem !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    cursor: pointer; outline: none !important;
+  }
+
+  .filter-select:focus { border-color: var(--admin-accent) !important; }
+  .filter-select option { background: #06101e; }
+
+  /* Summary pills */
+  .summary-row {
+    display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.4rem;
+  }
+
+  .sum-pill {
+    background: var(--glass); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.8rem 1.2rem;
+    display: flex; align-items: center; gap: 0.7rem; flex: 1; min-width: 120px;
+    transition: all 0.2s;
+  }
+
+  .sum-pill:hover { border-color: rgba(0,229,255,0.28); transform: translateY(-1px); }
+
+  .sum-pill .sp-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center; font-size: 0.95rem;
+  }
+
+  .sum-pill .sp-val { font-family: var(--font-head); font-size: 1.35rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .sum-pill .sp-lbl { font-size: 0.72rem; color: var(--text-muted); }
+
+  /* Table card */
+  .user-table-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+
+  .user-table-card .card-hdr { padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 0.6rem; }
+  .user-table-card .card-hdr h5 { font-family: var(--font-head); font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 0; }
+
+  .user-id-cell { font-family: 'Courier New', monospace; font-size: 0.78rem; color: var(--admin-accent); }
+
+  .actions-cell { display: flex; gap: 0.4rem; flex-wrap: wrap; }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .empty-state i { font-size: 2.5rem; color: var(--border); display: block; margin-bottom: 0.65rem; }
+
+  /* Confirm delete overlay */
+  .confirm-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7); backdrop-filter: blur(5px);
+    z-index: 3000; align-items: center; justify-content: center; padding: 1rem;
+  }
+
+  .confirm-overlay.open { display: flex; }
+
+  .confirm-box {
+    background: #060e1c; border: 1px solid rgba(255,77,109,0.3);
+    border-radius: 18px; padding: 2rem; max-width: 420px; width: 100%;
+    text-align: center; box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+    animation: modalIn 0.25s ease;
+  }
+
+  .confirm-box i { font-size: 2.5rem; color: #ff4d6d; display: block; margin-bottom: 1rem; }
+  .confirm-box h4 { font-family: var(--font-head); font-size: 1.1rem; font-weight: 800; color: var(--text); margin-bottom: 0.5rem; }
+  .confirm-box p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.5rem; }
+  .confirm-box .cbtn-row { display: flex; gap: 0.75rem; justify-content: center; }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">Registered Users</div>
+<div class="page-subtitle">View, activate, edit, or remove user accounts</div>
+
+<!-- Summary -->
+<div class="summary-row">
+  <div class="sum-pill">
+    <div class="sp-icon si-cyan"><i class="bi bi-people"></i></div>
+    <div><div class="sp-val" id="totalCount">{{ data|length }}</div><div class="sp-lbl">Total Users</div></div>
+  </div>
+  <div class="sum-pill">
+    <div class="sp-icon si-green"><i class="bi bi-person-check"></i></div>
+    <div><div class="sp-val" id="activeCount">—</div><div class="sp-lbl">Activated</div></div>
+  </div>
+  <div class="sum-pill">
+    <div class="sp-icon si-orange"><i class="bi bi-hourglass-split"></i></div>
+    <div><div class="sp-val" id="waitCount">—</div><div class="sp-lbl">Waiting</div></div>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="filter-bar">
+  <div class="search-box">
+    <i class="bi bi-search"></i>
+    <input type="text" id="searchInput" placeholder="Search by name, login ID, email, city..."/>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Status</span>
+    <select class="filter-select" id="statusFilter">
+      <option value="all">All</option>
+      <option value="activated">Activated</option>
+      <option value="waiting">Waiting</option>
+    </select>
+  </div>
+
+  <button class="btn-admin-outline" onclick="clearFilters()">
+    <i class="bi bi-x-circle"></i> Clear
+  </button>
+</div>
+
+<!-- Table -->
+<div class="user-table-card">
+  <div class="card-hdr">
+    <i class="bi bi-person-badge"></i>
+    <h5>User Accounts</h5>
+    <span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted);">
+      <strong id="visibleCount" style="color:var(--admin-accent);">{{ data|length }}</strong> shown
+    </span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="sss-table" id="usersTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Login ID</th>
+          <th>Mobile</th>
+          <th>Email</th>
+          <th>City</th>
+          <th>Status</th>
+          <th>Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="usersBody">
+        {% for i in data %}
+        <tr class="user-row"
+            data-status="{{ i.status }}"
+            data-search="{{ i.name|lower }} {{ i.loginid|lower }} {{ i.email|lower }} {{ i.city|lower }}">
+          <td style="color:var(--text-muted);font-size:0.78rem;">{{ forloop.counter }}</td>
+          <td style="font-weight:600;">{{ i.name }}</td>
+          <td><span class="user-id-cell">{{ i.loginid }}</span></td>
+          <td style="color:var(--text-muted);">{{ i.mobile }}</td>
+          <td style="color:var(--text-muted);font-size:0.82rem;">{{ i.email }}</td>
+          <td style="color:var(--text-muted);">{{ i.city }}</td>
+          <td>
+            {% if i.status == 'activated' %}
+              <span class="badge-active"><i class="bi bi-check2-circle me-1"></i>Active</span>
+            {% else %}
+              <span class="badge-wait"><i class="bi bi-hourglass-split me-1"></i>Waiting</span>
+            {% endif %}
+          </td>
+          <td>
+            <span class="badge-algo">{{ i.role|default:"User" }}</span>
+          </td>
+          <td>
+            <div class="actions-cell">
+              {% if i.status != 'activated' %}
+              <a href="{% url 'ActivaUsers' %}?uid={{ i.id }}" class="btn-admin-green"
+                 title="Activate user">
+                <i class="bi bi-check2-circle"></i>
+                <span class="d-none d-xl-inline">Activate</span>
+              </a>
+              {% endif %}
+              <a href="{% url 'EditUser' %}?uid={{ i.id }}" class="btn-admin-warn"
+                 title="Edit user">
+                <i class="bi bi-pencil"></i>
+                <span class="d-none d-xl-inline">Edit</span>
+              </a>
+              <button class="btn-admin-danger" title="Delete user"
+                      onclick="confirmDelete({{ i.id }}, '{{ i.name|escapejs }}')">
+                <i class="bi bi-trash3"></i>
+                <span class="d-none d-xl-inline">Delete</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="9">
+            <div class="empty-state">
+              <i class="bi bi-people"></i>
+              No registered users yet.
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Delete confirm -->
+<div class="confirm-overlay" id="deleteOverlay" onclick="closeConfirm(event)">
+  <div class="confirm-box">
+    <i class="bi bi-exclamation-triangle-fill"></i>
+    <h4>Delete User?</h4>
+    <p id="confirmText">This action cannot be undone.</p>
+    <div class="cbtn-row">
+      <button class="btn-admin-outline" onclick="document.getElementById('deleteOverlay').classList.remove('open')">
+        Cancel
+      </button>
+      <a href="#" id="confirmDeleteLink" class="btn-admin-danger">
+        <i class="bi bi-trash3"></i> Delete
+      </a>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Count stats
+  window.addEventListener('DOMContentLoaded', () => {
+    const rows = document.querySelectorAll('.user-row');
+    let active = 0, waiting = 0;
+    rows.forEach(r => {
+      if (r.dataset.status === 'activated') active++;
+      else waiting++;
+    });
+    document.getElementById('activeCount').textContent = active;
+    document.getElementById('waitCount').textContent   = waiting;
+  });
+
+  // Filters
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const status = document.getElementById('statusFilter').value;
+    const rows   = document.querySelectorAll('.user-row');
+    let visible  = 0;
+
+    rows.forEach(row => {
+      const matchSearch = !search || row.dataset.search.includes(search);
+      const matchStatus = status === 'all' || row.dataset.status === status;
+      const show = matchSearch && matchStatus;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('visibleCount').textContent = visible;
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('statusFilter').value = 'all';
+    applyFilters();
+  }
+
+  document.getElementById('searchInput').addEventListener('input',  applyFilters);
+  document.getElementById('statusFilter').addEventListener('change', applyFilters);
+
+  // Delete confirm
+  function confirmDelete(id, name) {
+    document.getElementById('confirmText').textContent =
+      `Are you sure you want to permanently delete "${name}"? This cannot be undone.`;
+    document.getElementById('confirmDeleteLink').href = `/DeleteUser/?uid=${id}`;
+    document.getElementById('deleteOverlay').classList.add('open');
+  }
+
+  function closeConfirm(e) {
+    if (e.target === document.getElementById('deleteOverlay'))
+      document.getElementById('deleteOverlay').classList.remove('open');
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('deleteOverlay').classList.remove('open');
+  });
+</script>
+{% endblock %}

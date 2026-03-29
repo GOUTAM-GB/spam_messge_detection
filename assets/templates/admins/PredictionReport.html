@@ -1,0 +1,368 @@
+{% extends 'admins/adminbase.html' %}
+{% load static %}
+{% block title %}Spam Reports — Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+  .report-filter-bar {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 1rem 1.4rem;
+    margin-bottom: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+  }
+
+  .search-box {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 9px; padding: 0.38rem 0.9rem;
+    transition: border-color 0.18s; flex: 1; min-width: 200px;
+  }
+
+  .search-box:focus-within { border-color: var(--admin-accent); }
+  .search-box i { color: var(--text-muted); font-size: 0.85rem; }
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body); font-size: 0.83rem; width: 100%;
+  }
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  .filter-select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text) !important;
+    padding: 0.38rem 0.75rem !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    cursor: pointer; outline: none !important;
+  }
+
+  .filter-select option { background: #06101e; }
+  .filter-select:focus { border-color: var(--admin-accent) !important; }
+
+  /* Summary pills */
+  .summary-row {
+    display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.4rem;
+  }
+
+  .sum-pill {
+    background: var(--glass); border: 1px solid var(--border);
+    border-radius: 12px; padding: 0.8rem 1.2rem;
+    display: flex; align-items: center; gap: 0.7rem; flex: 1; min-width: 120px;
+    transition: all 0.2s;
+  }
+
+  .sum-pill:hover { border-color: rgba(0,229,255,0.28); transform: translateY(-1px); }
+  .sp-icon { width: 34px; height: 34px; border-radius: 9px; display: flex; align-items: center; justify-content: center; font-size: 0.95rem; }
+  .sp-val { font-family: var(--font-head); font-size: 1.35rem; font-weight: 800; color: var(--text); line-height: 1; }
+  .sp-lbl { font-size: 0.72rem; color: var(--text-muted); }
+
+  /* Report table */
+  .report-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; }
+
+  .report-card .card-hdr {
+    padding: 1.1rem 1.4rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap;
+  }
+
+  .report-card .card-hdr h5 { font-family: var(--font-head); font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 0; }
+  .report-card .card-hdr i  { color: var(--admin-accent); }
+
+  .sss-table tbody tr { cursor: pointer; }
+
+  .view-btn {
+    background: none; border: none; color: var(--text-muted);
+    font-size: 0.85rem; cursor: pointer; padding: 0.25rem 0.5rem;
+    border-radius: 6px; transition: all 0.15s;
+  }
+
+  .view-btn:hover { color: var(--admin-accent); background: rgba(0,229,255,0.08); }
+
+  .badge-type { border-radius: 999px; padding: 0.2em 0.65em; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; }
+  .badge-type.text     { background: rgba(0,229,255,0.1);   color: var(--admin-accent); border: 1px solid rgba(0,229,255,0.2); }
+  .badge-type.image    { background: rgba(244,160,39,0.12); color: var(--warn);         border: 1px solid rgba(244,160,39,0.2); }
+  .badge-type.voice    { background: rgba(52,211,153,0.12); color: #34d399;             border: 1px solid rgba(52,211,153,0.2); }
+  .badge-type.vdo-based { background: rgba(244,114,182,0.12); color: #f472b6;           border: 1px solid rgba(244,114,182,0.2); }
+
+  .empty-state { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+  .empty-state i { font-size: 2.5rem; color: var(--border); display: block; margin-bottom: 0.65rem; }
+
+  /* Modal field */
+  .modal-field { margin-bottom: 1rem; }
+  .modal-field label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.07em; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 0.35rem; }
+  .modal-field .val { color: var(--text); font-size: 0.88rem; }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">All Prediction Reports</div>
+<div class="page-subtitle">System-wide spam detection history across all users</div>
+
+<!-- Summary -->
+<div class="summary-row">
+  <div class="sum-pill">
+    <div class="sp-icon si-cyan"><i class="bi bi-bar-chart-steps"></i></div>
+    <div><div class="sp-val">{{ data|length }}</div><div class="sp-lbl">Total Predictions</div></div>
+  </div>
+  <div class="sum-pill">
+    <div class="sp-icon si-red"><i class="bi bi-exclamation-shield"></i></div>
+    <div><div class="sp-val" id="spamCount">—</div><div class="sp-lbl">Spam Detected</div></div>
+  </div>
+  <div class="sum-pill">
+    <div class="sp-icon si-green"><i class="bi bi-shield-check"></i></div>
+    <div><div class="sp-val" id="safeCount">—</div><div class="sp-lbl">Safe Messages</div></div>
+  </div>
+  <div class="sum-pill">
+    <div class="sp-icon si-blue"><i class="bi bi-people"></i></div>
+    <div><div class="sp-val" id="userCount">—</div><div class="sp-lbl">Unique Users</div></div>
+  </div>
+</div>
+
+<!-- Filter bar -->
+<div class="report-filter-bar">
+  <div class="search-box">
+    <i class="bi bi-search"></i>
+    <input type="text" id="searchInput" placeholder="Search by user, algorithm, message..."/>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Type</span>
+    <select class="filter-select" id="typeFilter">
+      <option value="all">All Types</option>
+      <option value="text">Text</option>
+      <option value="image">Image</option>
+      <option value="voice">Voice</option>
+      <option value="vdo based">Video</option>
+    </select>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:0.5rem;">
+    <span style="font-size:0.78rem;color:var(--text-muted);">Result</span>
+    <select class="filter-select" id="resultFilter">
+      <option value="all">All Results</option>
+      <option value="spam">Spam</option>
+      <option value="non-spam">Safe</option>
+    </select>
+  </div>
+
+  <button class="btn-admin-outline" onclick="clearFilters()">
+    <i class="bi bi-x-circle"></i> Clear
+  </button>
+
+  <span style="margin-left:auto;font-size:0.78rem;color:var(--text-muted);">
+    <strong id="visibleCount" style="color:var(--admin-accent);">{{ data|length }}</strong> shown
+  </span>
+</div>
+
+<!-- Table -->
+<div class="report-card">
+  <div class="card-hdr">
+    <i class="bi bi-bar-chart-steps"></i>
+    <h5>Prediction History</h5>
+    <span class="badge-algo ms-auto">All Users</span>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="sss-table" id="reportTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>User</th>
+          <th>Algorithm</th>
+          <th>Input Preview</th>
+          <th>Type</th>
+          <th>Result</th>
+          <th>Date & Time</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="reportBody">
+        {% for i in data %}
+        <tr class="report-row"
+            data-type="{{ i.input_type }}"
+            data-result="{{ i.prediction_result }}"
+            data-search="{{ i.user_loginid|lower }} {{ i.algorithm_name|lower }} {{ i.input_text|lower }}"
+            onclick="openModal('{{ i.user_loginid|escapejs }}','{{ i.algorithm_name|escapejs }}','{{ i.input_type|escapejs }}','{{ i.prediction_result|escapejs }}','{{ i.created_at }}','{{ i.input_text|escapejs }}')">
+          <td style="color:var(--text-muted);font-size:0.78rem;">{{ forloop.counter }}</td>
+          <td style="font-family:'Courier New',monospace;font-size:0.82rem;color:var(--admin-accent);">
+            {{ i.user_loginid }}
+          </td>
+          <td><span class="badge-algo">{{ i.algorithm_name }}</span></td>
+          <td>
+            <div style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+                 title="{{ i.input_text }}">{{ i.input_text }}</div>
+          </td>
+          <td>
+            {% with t=i.input_type %}
+            <span class="badge-type {% if t == 'vdo based' %}vdo-based{% else %}{{ t }}{% endif %}">
+              {% if t == 'image' %}<i class="bi bi-image me-1"></i>Image
+              {% elif t == 'voice' %}<i class="bi bi-mic me-1"></i>Voice
+              {% elif t == 'vdo based' %}<i class="bi bi-camera-video me-1"></i>Video
+              {% else %}<i class="bi bi-chat-text me-1"></i>Text{% endif %}
+            </span>
+            {% endwith %}
+          </td>
+          <td>
+            {% if i.prediction_result == 'spam' %}
+              <span class="badge-spam"><i class="bi bi-exclamation-triangle me-1"></i>Spam</span>
+            {% else %}
+              <span class="badge-safe"><i class="bi bi-check2 me-1"></i>Safe</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted);font-size:0.78rem;white-space:nowrap;">
+            {{ i.created_at|date:"M d, Y H:i" }}
+          </td>
+          <td>
+            <button class="view-btn" title="View full details"
+                    onclick="event.stopPropagation();openModal('{{ i.user_loginid|escapejs }}','{{ i.algorithm_name|escapejs }}','{{ i.input_type|escapejs }}','{{ i.prediction_result|escapejs }}','{{ i.created_at }}','{{ i.input_text|escapejs }}')">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              No predictions recorded yet.
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Detail Modal -->
+<div class="sss-modal-overlay" id="reportModal" onclick="closeModalBg(event)">
+  <div class="sss-modal">
+    <div class="sss-modal-header">
+      <i class="bi bi-bar-chart-steps"></i>
+      <h4>Prediction Detail</h4>
+      <button class="modal-close" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="sss-modal-body">
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="modal-field"><label>User Login ID</label>
+            <div class="val" style="font-family:'Courier New',monospace;color:var(--admin-accent);" id="mUser"></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field"><label>Algorithm</label>
+            <div class="val" id="mAlgo"></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field"><label>Input Type</label>
+            <div class="val" id="mType"></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field"><label>Result</label>
+            <div class="val" id="mResult"></div>
+          </div>
+        </div>
+        <div class="col-12">
+          <div class="modal-field"><label>Date & Time</label>
+            <div class="val" style="color:var(--text-muted);font-size:0.82rem;" id="mDate"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-divider"></div>
+      <div class="modal-field">
+        <label>Full Input Content</label>
+        <div class="modal-content-box" id="mInput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Count stats on load
+  window.addEventListener('DOMContentLoaded', () => {
+    const rows = document.querySelectorAll('.report-row');
+    let spam = 0, safe = 0;
+    const users = new Set();
+    rows.forEach(r => {
+      if (r.dataset.result === 'spam') spam++;
+      else safe++;
+      const u = r.querySelector('td:nth-child(2)');
+      if (u) users.add(u.textContent.trim());
+    });
+    document.getElementById('spamCount').textContent = spam;
+    document.getElementById('safeCount').textContent = safe;
+    document.getElementById('userCount').textContent = users.size;
+  });
+
+  // Filters
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const type   = document.getElementById('typeFilter').value;
+    const result = document.getElementById('resultFilter').value;
+    const rows   = document.querySelectorAll('.report-row');
+    let visible  = 0;
+
+    rows.forEach(row => {
+      const matchSearch = !search || row.dataset.search.includes(search);
+      const matchType   = type === 'all'   || row.dataset.type === type;
+      const matchResult = result === 'all' || row.dataset.result === result;
+      const show = matchSearch && matchType && matchResult;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('visibleCount').textContent = visible;
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value  = '';
+    document.getElementById('typeFilter').value   = 'all';
+    document.getElementById('resultFilter').value = 'all';
+    applyFilters();
+  }
+
+  document.getElementById('searchInput').addEventListener('input',   applyFilters);
+  document.getElementById('typeFilter').addEventListener('change',   applyFilters);
+  document.getElementById('resultFilter').addEventListener('change', applyFilters);
+
+  // Modal
+  const typeMap   = { text:'text', image:'image', voice:'voice', 'vdo based':'vdo-based' };
+  const typeIcon  = { text:'chat-text', image:'image', voice:'mic', 'vdo based':'camera-video' };
+  const typeLabel = { text:'Text', image:'Image', voice:'Voice', 'vdo based':'Video' };
+
+  function openModal(user, algo, type, result, date, input) {
+    document.getElementById('mUser').textContent  = user;
+    document.getElementById('mAlgo').innerHTML    = `<span class="badge-algo">${algo}</span>`;
+    document.getElementById('mDate').textContent  = date;
+    document.getElementById('mInput').textContent = input;
+
+    document.getElementById('mType').innerHTML =
+      `<span class="badge-type ${typeMap[type]||'text'}"><i class="bi bi-${typeIcon[type]||'chat-text'} me-1"></i>${typeLabel[type]||type}</span>`;
+
+    document.getElementById('mResult').innerHTML = result === 'spam'
+      ? '<span class="badge-spam"><i class="bi bi-exclamation-triangle me-1"></i>Spam Detected</span>'
+      : '<span class="badge-safe"><i class="bi bi-check2 me-1"></i>Safe Message</span>';
+
+    document.getElementById('reportModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('reportModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function closeModalBg(e) {
+    if (e.target === document.getElementById('reportModal')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+{% endblock %}

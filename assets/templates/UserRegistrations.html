@@ -1,0 +1,645 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Register — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<style>
+  .reg-section {
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 3rem 1rem 4rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Background grid */
+  .reg-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,198,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,198,0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 80% 90% at 50% 30%, black 20%, transparent 80%);
+    pointer-events: none;
+  }
+
+  .reg-card {
+    width: 100%;
+    max-width: 720px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    padding: 2.5rem 2rem;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .reg-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 15%; right: 15%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    border-radius: 999px;
+  }
+
+  .reg-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .reg-header svg { width: 40px; height: 40px; flex-shrink: 0; }
+
+  .reg-header-text h2 {
+    font-family: var(--font-head);
+    font-size: 1.4rem;
+    font-weight: 800;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .reg-header-text p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin: 0.2rem 0 0;
+  }
+
+  /* Step indicator */
+  .step-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 2rem;
+  }
+
+  .step-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex: 1;
+    position: relative;
+  }
+
+  .step-item:not(:last-child)::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+    margin: 0 0.5rem;
+  }
+
+  .step-circle {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1.5px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    background: var(--glass);
+    flex-shrink: 0;
+    transition: all 0.3s;
+  }
+
+  .step-circle.active {
+    border-color: var(--primary);
+    color: var(--primary);
+    background: rgba(0,255,198,0.1);
+  }
+
+  .step-circle.done {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: #050b18;
+  }
+
+  .step-label {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    display: none;
+  }
+
+  @media (min-width: 480px) { .step-label { display: block; } }
+
+  .step-item.active .step-label { color: var(--primary); }
+  .step-item.done .step-label   { color: var(--text-muted); }
+
+  /* Form sections */
+  .form-step { display: none; }
+  .form-step.active { display: block; }
+
+  .form-section-title {
+    font-family: var(--font-head);
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 1.2rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .form-section-title i {
+    color: var(--primary);
+    font-size: 1rem;
+  }
+
+  .form-group { margin-bottom: 1.1rem; }
+
+  .input-icon-wrap { position: relative; }
+  .input-icon-wrap .sss-input { padding-left: 2.6rem !important; }
+  .input-icon-wrap .field-icon {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+  }
+
+  .pw-toggle {
+    position: absolute;
+    right: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+    transition: color 0.2s;
+  }
+  .pw-toggle:hover { color: var(--primary); }
+
+  /* Password strength */
+  .pw-strength-bar {
+    height: 3px;
+    border-radius: 999px;
+    background: var(--border);
+    margin-top: 0.5rem;
+    overflow: hidden;
+  }
+
+  .pw-strength-fill {
+    height: 100%;
+    border-radius: 999px;
+    width: 0%;
+    transition: width 0.35s, background 0.35s;
+  }
+
+  .pw-strength-label {
+    font-size: 0.72rem;
+    margin-top: 0.25rem;
+    color: var(--text-muted);
+  }
+
+  textarea.sss-input {
+    resize: vertical;
+    min-height: 80px;
+    padding: 0.7rem 1rem !important;
+  }
+
+  /* Nav buttons */
+  .step-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 1.8rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .btn-step-prev {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 0.7rem 1.5rem;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .btn-step-prev:hover {
+    border-color: var(--primary);
+    color: var(--primary);
+  }
+
+  .btn-step-next {
+    background: var(--primary);
+    border: none;
+    color: #050b18;
+    padding: 0.7rem 1.8rem;
+    border-radius: 10px;
+    font-family: var(--font-body);
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.22s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .btn-step-next:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0,255,198,0.25);
+  }
+
+  .auth-footer {
+    text-align: center;
+    margin-top: 1.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .auth-footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .auth-footer a:hover { text-decoration: underline; }
+
+  /* Validation state */
+  .sss-input.is-valid   { border-color: var(--primary)     !important; }
+  .sss-input.is-invalid { border-color: var(--danger-glow) !important; }
+
+  .field-feedback {
+    font-size: 0.73rem;
+    margin-top: 0.3rem;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+  }
+
+  .field-feedback.valid   { color: var(--primary); }
+  .field-feedback.invalid { color: var(--danger-glow); }
+</style>
+{% endblock %}
+
+{% block contents %}
+<section class="reg-section">
+  <div class="reg-card">
+
+    <!-- Header -->
+    <div class="reg-header">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="10" fill="#050b18"/>
+        <path d="M20 4 L34 10 V20 C34 28 27 34.5 20 37 C13 34.5 6 28 6 20 V10 Z"
+              fill="none" stroke="#0ff4c6" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M14 20 L18 24 L26 16" stroke="#0ff4c6" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="3" fill="rgba(0,255,198,0.15)" stroke="#0ff4c6" stroke-width="1"/>
+      </svg>
+      <div class="reg-header-text">
+        <h2>Create Your Account</h2>
+        <p>Join SpamScamShield — it's free and takes less than 2 minutes</p>
+      </div>
+    </div>
+
+    <!-- Step bar -->
+    <div class="step-bar">
+      <div class="step-item active" id="si1">
+        <div class="step-circle active" id="sc1">1</div>
+        <span class="step-label">Credentials</span>
+      </div>
+      <div class="step-item" id="si2">
+        <div class="step-circle" id="sc2">2</div>
+        <span class="step-label">Contact</span>
+      </div>
+      <div class="step-item" id="si3">
+        <div class="step-circle" id="sc3">3</div>
+        <span class="step-label">Address</span>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="sss-alert {% if 'successful' in message.message|lower %}sss-alert-success{% else %}sss-alert-danger{% endif %} mb-3">
+          <i class="bi bi-{% if 'successful' in message.message|lower %}check-circle{% else %}exclamation-triangle{% endif %} me-2"></i>{{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <form method="POST" action="{% url 'UserRegisterActions' %}" id="regForm" novalidate>
+      {% csrf_token %}
+
+      <!-- ── Step 1: Credentials ── -->
+      <div class="form-step active" id="step1">
+        <div class="form-section-title">
+          <i class="bi bi-key"></i> Account Credentials
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-group">
+              <label class="sss-label">Full Name</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-person field-icon"></i>
+                <input type="text" name="name" class="sss-input" id="nameInput"
+                       placeholder="Enter your full name" required autocomplete="name"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">Login ID (Username)</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-at field-icon"></i>
+                <input type="text" name="loginid" class="sss-input" id="loginidInput"
+                       placeholder="Choose a unique username" required autocomplete="username"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">Email Address</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-envelope field-icon"></i>
+                <input type="email" name="email" class="sss-input" id="emailInput"
+                       placeholder="example@gmail.com" required autocomplete="email"/>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-12">
+            <div class="form-group">
+              <label class="sss-label">Password</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-lock field-icon"></i>
+                <input type="password" name="password" class="sss-input" id="pwInput"
+                       placeholder="Min 8 chars, 1 capital, 1 number, 1 special symbol"
+                       required autocomplete="new-password" oninput="checkStrength(this.value)"/>
+                <button type="button" class="pw-toggle" onclick="togglePw()">
+                  <i class="bi bi-eye" id="pwIcon"></i>
+                </button>
+              </div>
+              <div class="pw-strength-bar">
+                <div class="pw-strength-fill" id="pwStrengthFill"></div>
+              </div>
+              <div class="pw-strength-label" id="pwStrengthLabel"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <div></div>
+          <button type="button" class="btn-step-next" onclick="goStep(2)">
+            Next: Contact Info <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Step 2: Contact ── -->
+      <div class="form-step" id="step2">
+        <div class="form-section-title">
+          <i class="bi bi-telephone"></i> Contact Information
+        </div>
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">Mobile Number</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-phone field-icon"></i>
+                <input type="tel" name="mobile" class="sss-input" id="mobileInput"
+                       placeholder="10-digit Indian mobile (6-9 start)" required
+                       maxlength="10" autocomplete="tel"
+                       oninput="validateMobile(this.value)"/>
+              </div>
+              <div class="field-feedback" id="mobileFeedback"></div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">Locality / Area</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-geo field-icon"></i>
+                <input type="text" name="locality" class="sss-input"
+                       placeholder="Your locality or area" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step-nav">
+          <button type="button" class="btn-step-prev" onclick="goStep(1)">
+            <i class="bi bi-arrow-left"></i> Back
+          </button>
+          <button type="button" class="btn-step-next" onclick="goStep(3)">
+            Next: Address <i class="bi bi-arrow-right"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Step 3: Address ── -->
+      <div class="form-step" id="step3">
+        <div class="form-section-title">
+          <i class="bi bi-house-door"></i> Address Details
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12">
+            <div class="form-group">
+              <label class="sss-label">Full Address</label>
+              <textarea name="address" class="sss-input"
+                        placeholder="Door no., Street, Colony..." required rows="3"></textarea>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">City</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-building field-icon"></i>
+                <input type="text" name="city" class="sss-input"
+                       placeholder="City name" required/>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="form-group">
+              <label class="sss-label">State</label>
+              <div class="input-icon-wrap">
+                <i class="bi bi-map field-icon"></i>
+                <input type="text" name="state" class="sss-input"
+                       placeholder="State name" required/>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary card -->
+        <div style="background: rgba(0,255,198,0.05); border: 1px dashed rgba(0,255,198,0.2); border-radius: 12px; padding: 1rem; margin-top: 1rem; font-size: 0.82rem; color: var(--text-muted);">
+          <i class="bi bi-shield-check me-1" style="color:var(--primary)"></i>
+          Your password is encrypted and we <strong style="color:var(--text)">never share</strong> your personal data with third parties.
+        </div>
+
+        <div class="step-nav">
+          <button type="button" class="btn-step-prev" onclick="goStep(2)">
+            <i class="bi bi-arrow-left"></i> Back
+          </button>
+          <button type="submit" class="btn-step-next">
+            <i class="bi bi-person-check"></i> Create Account
+          </button>
+        </div>
+      </div>
+
+    </form>
+
+    <div class="auth-footer">
+      Already have an account? <a href="{% url 'UnifiedLogin' %}">Sign in</a>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  let currentStep = 1;
+  const totalSteps = 3;
+
+  function goStep(n) {
+    // Validate before going forward
+    if (n > currentStep) {
+      if (!validateStep(currentStep)) return;
+    }
+
+    // Hide current
+    document.getElementById('step' + currentStep).classList.remove('active');
+    updateStepUI(currentStep, n > currentStep ? 'done' : '');
+
+    // Show next
+    currentStep = n;
+    document.getElementById('step' + currentStep).classList.add('active');
+    updateStepUI(currentStep, 'active');
+  }
+
+  function updateStepUI(num, state) {
+    const si = document.getElementById('si' + num);
+    const sc = document.getElementById('sc' + num);
+    si.className = 'step-item' + (state ? ' ' + state : '');
+    sc.className = 'step-circle' + (state ? ' ' + state : '');
+    if (state === 'done') sc.innerHTML = '<i class="bi bi-check2"></i>';
+    else sc.innerHTML = num;
+  }
+
+  function validateStep(step) {
+    const inputs = document.querySelectorAll('#step' + step + ' [required]');
+    let ok = true;
+    inputs.forEach(inp => {
+      if (!inp.value.trim()) {
+        inp.classList.add('is-invalid');
+        ok = false;
+      } else {
+        inp.classList.remove('is-invalid');
+      }
+    });
+    if (!ok) return false;
+
+    if (step === 1) {
+      const pw = document.getElementById('pwInput').value;
+      if (!/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&]).{8,}$/.test(pw)) {
+        document.getElementById('pwInput').classList.add('is-invalid');
+        return false;
+      }
+    }
+
+    if (step === 2) {
+      const mob = document.getElementById('mobileInput').value;
+      if (!/^[6-9][0-9]{9}$/.test(mob)) {
+        document.getElementById('mobileInput').classList.add('is-invalid');
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+  function togglePw() {
+    const inp = document.getElementById('pwInput');
+    const ico = document.getElementById('pwIcon');
+    const show = inp.type === 'password';
+    inp.type  = show ? 'text' : 'password';
+    ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+  }
+
+  function checkStrength(val) {
+    const fill  = document.getElementById('pwStrengthFill');
+    const label = document.getElementById('pwStrengthLabel');
+    let score = 0;
+    if (val.length >= 8) score++;
+    if (/[A-Z]/.test(val)) score++;
+    if (/\d/.test(val)) score++;
+    if (/[@$!%*?&]/.test(val)) score++;
+
+    const pcts   = ['0%', '30%', '55%', '80%', '100%'];
+    const colors = ['', '#ff4d6d', '#f4a027', '#87c94e', '#0ff4c6'];
+    const labels = ['', 'Too weak', 'Fair', 'Good', 'Strong'];
+
+    fill.style.width  = pcts[score];
+    fill.style.background = colors[score];
+    label.textContent = labels[score];
+    label.style.color = colors[score];
+  }
+
+  function validateMobile(val) {
+    const fb = document.getElementById('mobileFeedback');
+    const inp = document.getElementById('mobileInput');
+    if (/^[6-9][0-9]{9}$/.test(val)) {
+      fb.className = 'field-feedback valid';
+      fb.innerHTML = '<i class="bi bi-check-circle"></i> Valid Indian mobile number';
+      inp.classList.remove('is-invalid');
+      inp.classList.add('is-valid');
+    } else if (val.length > 0) {
+      fb.className = 'field-feedback invalid';
+      fb.innerHTML = '<i class="bi bi-x-circle"></i> Must be 10 digits starting with 6-9';
+      inp.classList.remove('is-valid');
+    } else {
+      fb.innerHTML = '';
+      inp.classList.remove('is-valid', 'is-invalid');
+    }
+  }
+
+  // Remove is-invalid on input
+  document.querySelectorAll('.sss-input').forEach(inp => {
+    inp.addEventListener('input', () => inp.classList.remove('is-invalid'));
+  });
+</script>
+{% endblock %}

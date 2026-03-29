@@ -1,0 +1,184 @@
+{% extends 'admins/adminbase.html' %}
+{% load static %}
+{% block title %}Edit User — Admin{% endblock %}
+
+{% block extra_head %}
+<style>
+  .edit-card {
+    background: var(--bg-card); border: 1px solid var(--border);
+    border-radius: 20px; overflow: hidden;
+    max-width: 620px; margin: 0 auto;
+  }
+
+  .edit-card-header {
+    padding: 1.3rem 1.5rem; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.75rem;
+  }
+
+  .edit-card-header .user-avatar {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--admin-accent), #0080ff);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--font-head); font-size: 1.1rem; font-weight: 800;
+    color: #04090f; flex-shrink: 0;
+  }
+
+  .edit-card-header h4 {
+    font-family: var(--font-head); font-size: 1rem; font-weight: 800;
+    color: var(--text); margin: 0;
+  }
+
+  .edit-card-header p { font-size: 0.8rem; color: var(--text-muted); margin: 0; }
+
+  .edit-card-body { padding: 1.6rem 1.5rem; }
+
+  .form-row { margin-bottom: 1.1rem; }
+
+  .input-icon-wrap { position: relative; }
+  .input-icon-wrap .sss-input { padding-left: 2.6rem !important; }
+  .input-icon-wrap .fi {
+    position: absolute; left: 0.9rem; top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted); font-size: 0.9rem; pointer-events: none;
+  }
+
+  .edit-footer {
+    padding: 1.2rem 1.5rem; border-top: 1px solid var(--border);
+    display: flex; gap: 0.75rem; flex-wrap: wrap;
+  }
+
+  .breadcrumb-nav {
+    display: flex; align-items: center; gap: 0.4rem;
+    font-size: 0.8rem; color: var(--text-muted);
+    margin-bottom: 1.4rem;
+  }
+
+  .breadcrumb-nav a { color: var(--admin-accent); text-decoration: none; }
+  .breadcrumb-nav a:hover { text-decoration: underline; }
+  .breadcrumb-nav i { font-size: 0.7rem; }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">Edit User</div>
+<div class="page-subtitle">Update user details, status, and role</div>
+
+<!-- Breadcrumb -->
+<div class="breadcrumb-nav">
+  <a href="{% url 'AdminHome' %}">Dashboard</a>
+  <i class="bi bi-chevron-right"></i>
+  <a href="{% url 'RegisterUsersView' %}">Registered Users</a>
+  <i class="bi bi-chevron-right"></i>
+  <span>Edit: {{ user.name }}</span>
+</div>
+
+<div class="edit-card">
+
+  <div class="edit-card-header">
+    <div class="user-avatar">{{ user.name|first|upper }}</div>
+    <div>
+      <h4>{{ user.name }}</h4>
+      <p>ID: {{ user.loginid }} &bull; {{ user.email }}</p>
+    </div>
+  </div>
+
+  <form action="{% url 'EditUser' %}" method="POST" id="editForm">
+    {% csrf_token %}
+    <input type="hidden" name="uid" value="{{ user.id }}"/>
+
+    <div class="edit-card-body">
+
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="form-row">
+            <label class="sss-label">Full Name</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-person fi"></i>
+              <input type="text" name="name" class="sss-input" value="{{ user.name }}" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="form-row">
+            <label class="sss-label">Mobile Number</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-phone fi"></i>
+              <input type="text" name="mobile" class="sss-input" value="{{ user.mobile }}" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="form-row">
+            <label class="sss-label">Email Address</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-envelope fi"></i>
+              <input type="email" name="email" class="sss-input" value="{{ user.email }}" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-12">
+          <div class="form-row">
+            <label class="sss-label">Locality / Area</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-geo fi"></i>
+              <input type="text" name="locality" class="sss-input" value="{{ user.locality }}" required/>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="form-row">
+            <label class="sss-label">Account Status</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-toggle-on fi"></i>
+              <select name="status" class="sss-input">
+                <option value="activated" {% if user.status == 'activated' %}selected{% endif %}>
+                  ✓ Activated
+                </option>
+                <option value="waiting" {% if user.status == 'waiting' %}selected{% endif %}>
+                  ⏳ Waiting
+                </option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-6">
+          <div class="form-row">
+            <label class="sss-label">User Role</label>
+            <div class="input-icon-wrap">
+              <i class="bi bi-shield-check fi"></i>
+              <select name="role" class="sss-input">
+                <option value="User"  {% if user.role == 'User'  %}selected{% endif %}>User</option>
+                <option value="Admin" {% if user.role == 'Admin' %}selected{% endif %}>Admin</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info box -->
+      <div class="sss-alert sss-alert-info mt-3">
+        <i class="bi bi-info-circle-fill flex-shrink-0"></i>
+        <span>Password and Login ID cannot be changed here. Only metadata and access controls are editable.</span>
+      </div>
+
+    </div>
+
+    <div class="edit-footer">
+      <button type="submit" class="btn-admin">
+        <i class="bi bi-check2-circle"></i> Save Changes
+      </button>
+      <a href="{% url 'RegisterUsersView' %}" class="btn-admin-outline">
+        <i class="bi bi-x-circle"></i> Cancel
+      </a>
+    </div>
+
+  </form>
+</div>
+
+{% endblock %}

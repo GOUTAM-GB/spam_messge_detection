@@ -1,0 +1,357 @@
+{% extends 'users/userbase.html' %}
+{% load static %}
+{% block title %}Model Accuracy — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  .acc-table-card, .chart-card, .recent-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .card-header-sss {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem;
+  }
+
+  .card-header-sss h5 {
+    font-family: var(--font-head);
+    font-size: 0.98rem; font-weight: 800;
+    color: var(--text); margin: 0;
+  }
+
+  .card-header-sss i { color: var(--primary); font-size: 1rem; }
+
+  .card-body-sss { padding: 1.4rem; }
+
+  /* Accuracy row items */
+  .acc-row {
+    display: flex; align-items: center; gap: 1rem;
+    padding: 0.85rem 1.4rem;
+    border-bottom: 1px solid rgba(0,255,198,0.06);
+    transition: background 0.15s;
+  }
+
+  .acc-row:last-child { border-bottom: none; }
+  .acc-row:hover { background: rgba(0,255,198,0.03); }
+
+  .acc-algo {
+    font-size: 0.86rem; font-weight: 600;
+    color: var(--text); width: 180px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .acc-algo i { color: var(--primary); font-size: 0.9rem; }
+
+  .acc-bar-wrap {
+    flex: 1;
+    background: rgba(255,255,255,0.05);
+    border-radius: 999px;
+    height: 8px; overflow: hidden;
+  }
+
+  .acc-bar-fill {
+    height: 100%; border-radius: 999px;
+    transition: width 1.2s cubic-bezier(.4,0,.2,1);
+  }
+
+  .acc-val {
+    font-family: var(--font-head);
+    font-size: 1rem; font-weight: 800;
+    color: var(--text); width: 60px; text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* Chart container */
+  .chart-container {
+    position: relative; height: 280px;
+    padding: 1.4rem;
+  }
+
+  /* Recent predictions table */
+  .recent-empty {
+    text-align: center; padding: 2.5rem 1rem;
+    color: var(--text-muted); font-size: 0.88rem;
+  }
+
+  .recent-empty i { font-size: 2rem; color: var(--border); display: block; margin-bottom: 0.5rem; }
+
+  /* Top stat pills */
+  .top-stat-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.85rem; margin-bottom: 1.5rem;
+  }
+
+  .top-stat {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    text-align: center;
+    transition: all 0.2s;
+  }
+
+  .top-stat:hover {
+    border-color: rgba(0,255,198,0.3);
+    transform: translateY(-2px);
+  }
+
+  .top-stat .ts-val {
+    font-family: var(--font-head);
+    font-size: 1.5rem; font-weight: 800;
+    color: var(--primary);
+  }
+
+  .top-stat .ts-lbl {
+    font-size: 0.72rem; color: var(--text-muted);
+    margin-top: 0.2rem; font-weight: 500;
+  }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">Model Accuracy</div>
+<div class="page-subtitle">Real-time performance metrics for all five ML classifiers</div>
+
+<!-- ── Top Stats ── -->
+<div class="top-stat-row">
+  <div class="top-stat">
+    <div class="ts-val">{{ nb_acc }}%</div>
+    <div class="ts-lbl">Naive Bayes</div>
+  </div>
+  <div class="top-stat">
+    <div class="ts-val">{{ svm_acc }}%</div>
+    <div class="ts-lbl">SVM</div>
+  </div>
+  <div class="top-stat">
+    <div class="ts-val">{{ lr_acc }}%</div>
+    <div class="ts-lbl">Logistic Reg.</div>
+  </div>
+  <div class="top-stat">
+    <div class="ts-val">{{ rf_acc }}%</div>
+    <div class="ts-lbl">Random Forest</div>
+  </div>
+  <div class="top-stat">
+    <div class="ts-val">{{ kmeans_acc }}%</div>
+    <div class="ts-lbl">K-Means</div>
+  </div>
+</div>
+
+<div class="row g-4">
+
+  <!-- Left: Accuracy bars + chart -->
+  <div class="col-lg-6">
+
+    <!-- Accuracy bars -->
+    <div class="acc-table-card mb-4">
+      <div class="card-header-sss">
+        <i class="bi bi-speedometer2"></i>
+        <h5>Classifier Scores</h5>
+      </div>
+
+      <div class="acc-row">
+        <div class="acc-algo"><i class="bi bi-diagram-3"></i>Naive Bayes</div>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar-fill" style="width: 0%; background: linear-gradient(90deg, #0ff4c6, #00a2ff);"
+               data-target="{{ nb_acc }}"></div>
+        </div>
+        <div class="acc-val">{{ nb_acc }}%</div>
+      </div>
+
+      <div class="acc-row">
+        <div class="acc-algo"><i class="bi bi-vector-pen"></i>SVM</div>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar-fill" style="width: 0%; background: linear-gradient(90deg, #80aaff, #6366f1);"
+               data-target="{{ svm_acc }}"></div>
+        </div>
+        <div class="acc-val">{{ svm_acc }}%</div>
+      </div>
+
+      <div class="acc-row">
+        <div class="acc-algo"><i class="bi bi-activity"></i>Logistic Reg.</div>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar-fill" style="width: 0%; background: linear-gradient(90deg, #f4a027, #f87171);"
+               data-target="{{ lr_acc }}"></div>
+        </div>
+        <div class="acc-val">{{ lr_acc }}%</div>
+      </div>
+
+      <div class="acc-row">
+        <div class="acc-algo"><i class="bi bi-tree"></i>Random Forest</div>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar-fill" style="width: 0%; background: linear-gradient(90deg, #34d399, #059669);"
+               data-target="{{ rf_acc }}"></div>
+        </div>
+        <div class="acc-val">{{ rf_acc }}%</div>
+      </div>
+
+      <div class="acc-row">
+        <div class="acc-algo"><i class="bi bi-grid-3x3-gap"></i>K-Means</div>
+        <div class="acc-bar-wrap">
+          <div class="acc-bar-fill" style="width: 0%; background: linear-gradient(90deg, #f472b6, #c084fc);"
+               data-target="{{ kmeans_acc }}"></div>
+        </div>
+        <div class="acc-val">{{ kmeans_acc }}%</div>
+      </div>
+    </div>
+
+    <!-- Bar chart -->
+    <div class="chart-card">
+      <div class="card-header-sss">
+        <i class="bi bi-bar-chart-line"></i>
+        <h5>Accuracy Comparison</h5>
+      </div>
+      <div class="chart-container">
+        <canvas id="accuracyChart"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Right: Recent predictions -->
+  <div class="col-lg-6">
+    <div class="recent-card" style="height: 100%;">
+      <div class="card-header-sss">
+        <i class="bi bi-clock-history"></i>
+        <h5>Recent Predictions</h5>
+        <span class="badge-algo ms-auto">Last 50</span>
+      </div>
+
+      <div style="overflow-y: auto; max-height: 520px;">
+        <table class="sss-table">
+          <thead>
+            <tr>
+              <th>Algorithm</th>
+              <th>Input</th>
+              <th>Result</th>
+              <th>Time</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pred in recent_preds %}
+            <tr>
+              <td><span class="badge-algo">{{ pred.algorithm_name }}</span></td>
+              <td style="max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"
+                  title="{{ pred.input_text }}">{{ pred.input_text }}</td>
+              <td>
+                {% if pred.prediction_result == 'spam' %}
+                  <span class="badge-spam"><i class="bi bi-exclamation-triangle me-1"></i>Spam</span>
+                {% else %}
+                  <span class="badge-safe"><i class="bi bi-check2 me-1"></i>Safe</span>
+                {% endif %}
+              </td>
+              <td style="color: var(--text-muted); font-size: 0.78rem;">
+                {{ pred.created_at|date:"M d, H:i" }}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="4">
+                <div class="recent-empty">
+                  <i class="bi bi-inbox"></i>
+                  No predictions yet. Run your first detection!
+                </div>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // Animate accuracy bars on load
+  window.addEventListener('load', () => {
+    document.querySelectorAll('.acc-bar-fill').forEach(bar => {
+      const target = bar.dataset.target;
+      setTimeout(() => { bar.style.width = target + '%'; }, 200);
+    });
+  });
+
+  // Chart.js bar chart
+  const ctx = document.getElementById('accuracyChart').getContext('2d');
+
+  const gradient1 = ctx.createLinearGradient(0, 0, 0, 280);
+  gradient1.addColorStop(0, 'rgba(15,244,198,0.8)');
+  gradient1.addColorStop(1, 'rgba(15,244,198,0.2)');
+
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Naive Bayes', 'SVM', 'Log. Reg.', 'R. Forest', 'K-Means'],
+      datasets: [{
+        label: 'Accuracy (%)',
+        data: [
+          {{ nb_acc|default:0 }},
+          {{ svm_acc|default:0 }},
+          {{ lr_acc|default:0 }},
+          {{ rf_acc|default:0 }},
+          {{ kmeans_acc|default:0 }}
+        ],
+        backgroundColor: [
+          'rgba(15,244,198,0.7)',
+          'rgba(128,170,255,0.7)',
+          'rgba(244,160,39,0.7)',
+          'rgba(52,211,153,0.7)',
+          'rgba(244,114,182,0.7)'
+        ],
+        borderColor: [
+          '#0ff4c6', '#80aaff', '#f4a027', '#34d399', '#f472b6'
+        ],
+        borderWidth: 2,
+        borderRadius: 8,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: { duration: 1200, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(5,11,24,0.95)',
+          borderColor: 'rgba(0,255,198,0.2)',
+          borderWidth: 1,
+          titleColor: '#0ff4c6',
+          bodyColor: '#e8f0fe',
+          padding: 10,
+          callbacks: {
+            label: ctx => ` ${ctx.raw}% accuracy`
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true, max: 100,
+          grid: { color: 'rgba(0,255,198,0.07)' },
+          ticks: {
+            color: '#7a8faa', font: { family: 'Space Grotesk', size: 11 },
+            callback: v => v + '%'
+          },
+          border: { color: 'transparent' }
+        },
+        x: {
+          grid: { display: false },
+          ticks: {
+            color: '#7a8faa', font: { family: 'Space Grotesk', size: 11 }
+          },
+          border: { color: 'transparent' }
+        }
+      }
+    }
+  });
+</script>
+{% endblock %}

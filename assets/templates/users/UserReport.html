@@ -1,0 +1,513 @@
+{% extends 'users/userbase.html' %}
+{% load static %}
+{% block title %}My Reports — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<style>
+  /* Filter bar */
+  .report-filter-bar {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1rem 1.4rem;
+    margin-bottom: 1.4rem;
+    display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center;
+  }
+
+  .filter-group {
+    display: flex; align-items: center; gap: 0.5rem;
+  }
+
+  .filter-group label { font-size: 0.78rem; color: var(--text-muted); white-space: nowrap; }
+
+  .filter-select {
+    background: rgba(255,255,255,0.05) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 8px !important;
+    color: var(--text) !important;
+    padding: 0.35rem 0.75rem !important;
+    font-family: var(--font-body) !important;
+    font-size: 0.82rem !important;
+    cursor: pointer; outline: none !important;
+    transition: border-color 0.18s;
+  }
+
+  .filter-select:focus { border-color: var(--primary) !important; }
+  .filter-select option { background: #0a1428; }
+
+  .search-box {
+    display: flex; align-items: center; gap: 0.5rem;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 0.35rem 0.85rem;
+    transition: border-color 0.18s;
+    flex: 1; min-width: 180px;
+  }
+
+  .search-box:focus-within { border-color: var(--primary); }
+
+  .search-box i { color: var(--text-muted); font-size: 0.85rem; }
+
+  .search-box input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body);
+    font-size: 0.83rem; width: 100%;
+  }
+
+  .search-box input::placeholder { color: var(--text-muted); }
+
+  /* Stats mini row */
+  .report-stats {
+    display: flex; flex-wrap: wrap; gap: 0.75rem; margin-bottom: 1.4rem;
+  }
+
+  .r-stat {
+    background: var(--glass);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.8rem 1.2rem;
+    display: flex; align-items: center; gap: 0.7rem;
+    flex: 1; min-width: 120px;
+    transition: all 0.2s;
+  }
+
+  .r-stat:hover { border-color: rgba(0,255,198,0.28); transform: translateY(-1px); }
+
+  .r-stat .r-icon {
+    width: 34px; height: 34px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem;
+  }
+
+  .r-stat .r-val {
+    font-family: var(--font-head);
+    font-size: 1.35rem; font-weight: 800; color: var(--text); line-height: 1;
+  }
+
+  .r-stat .r-lbl { font-size: 0.72rem; color: var(--text-muted); }
+
+  /* Table card */
+  .report-table-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .report-table-card .card-header-sss {
+    padding: 1.1rem 1.4rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.6rem;
+    flex-wrap: wrap;
+  }
+
+  .report-table-card .card-header-sss h5 {
+    font-family: var(--font-head);
+    font-size: 0.95rem; font-weight: 800; color: var(--text); margin: 0;
+  }
+
+  .report-table-card .card-header-sss i { color: var(--primary); }
+
+  .total-count {
+    margin-left: auto;
+    font-size: 0.78rem; color: var(--text-muted);
+  }
+
+  .total-count strong { color: var(--primary); }
+
+  /* Table */
+  .sss-table .text-truncate { max-width: 240px; }
+
+  /* Type badge */
+  .badge-type {
+    border-radius: 999px; padding: 0.2em 0.65em;
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: capitalize;
+  }
+
+  .badge-type.text  { background: rgba(100,160,255,0.12); color: #80aaff; border: 1px solid rgba(100,160,255,0.2); }
+  .badge-type.image { background: rgba(244,160,39,0.12);  color: var(--warn); border: 1px solid rgba(244,160,39,0.2); }
+  .badge-type.voice { background: rgba(52,211,153,0.12);  color: #34d399; border: 1px solid rgba(52,211,153,0.2); }
+  .badge-type.vdo-based { background: rgba(244,114,182,0.12); color: #f472b6; border: 1px solid rgba(244,114,182,0.2); }
+
+  .empty-state {
+    text-align: center; padding: 3.5rem 1rem;
+    color: var(--text-muted);
+  }
+
+  .empty-state i { font-size: 3rem; color: var(--border); display: block; margin-bottom: 0.75rem; }
+
+  /* Row hover action */
+  .sss-table tbody tr { cursor: pointer; }
+
+  .view-btn {
+    background: none; border: none;
+    color: var(--text-muted); font-size: 0.85rem;
+    cursor: pointer; padding: 0.25rem 0.5rem;
+    border-radius: 6px; transition: all 0.15s;
+  }
+
+  .view-btn:hover { color: var(--primary); background: rgba(0,255,198,0.08); }
+
+  /* ── MODAL ── */
+  .sss-modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.65);
+    backdrop-filter: blur(6px);
+    z-index: 2000;
+    align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+
+  .sss-modal-overlay.open { display: flex; }
+
+  .sss-modal {
+    background: #0a1428;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    width: 100%; max-width: 560px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.7);
+    animation: modalIn 0.3s cubic-bezier(.4,0,.2,1);
+  }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(16px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  .sss-modal-header {
+    padding: 1.3rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 0.7rem;
+  }
+
+  .sss-modal-header h4 {
+    font-family: var(--font-head);
+    font-size: 1.05rem; font-weight: 800;
+    color: var(--text); margin: 0;
+  }
+
+  .sss-modal-header i { color: var(--primary); }
+
+  .modal-close {
+    margin-left: auto; background: none; border: none;
+    color: var(--text-muted); font-size: 1.2rem;
+    cursor: pointer; padding: 0.2rem 0.4rem;
+    border-radius: 6px; transition: all 0.15s;
+  }
+
+  .modal-close:hover { color: var(--text); background: var(--glass); }
+
+  .sss-modal-body { padding: 1.4rem 1.5rem; }
+
+  .modal-field {
+    margin-bottom: 1rem;
+  }
+
+  .modal-field label {
+    font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 0.07em; color: var(--text-muted);
+    text-transform: uppercase; display: block; margin-bottom: 0.35rem;
+  }
+
+  .modal-field .val {
+    color: var(--text); font-size: 0.88rem;
+  }
+
+  .modal-input-content {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.9rem 1rem;
+    font-size: 0.82rem; color: var(--text-muted);
+    font-family: 'Courier New', monospace;
+    max-height: 220px; overflow-y: auto;
+    white-space: pre-wrap; word-break: break-word;
+    line-height: 1.65;
+  }
+
+  .modal-divider {
+    height: 1px; background: var(--border);
+    margin: 1rem 0;
+  }
+</style>
+{% endblock %}
+
+{% block contents %}
+
+<div class="page-title">My Prediction Reports</div>
+<div class="page-subtitle">Complete audit trail of all your spam detection queries</div>
+
+<!-- ── Stats ── -->
+<div class="report-stats">
+  {% with total=data|length %}
+  <div class="r-stat">
+    <div class="r-icon" style="background:rgba(100,160,255,0.1); color:#80aaff;"><i class="bi bi-clipboard-data"></i></div>
+    <div>
+      <div class="r-val">{{ total }}</div>
+      <div class="r-lbl">Total Predictions</div>
+    </div>
+  </div>
+  {% endwith %}
+
+  <div class="r-stat" id="statSpam">
+    <div class="r-icon" style="background:rgba(255,77,109,0.1); color:#ff7f99;"><i class="bi bi-exclamation-shield"></i></div>
+    <div>
+      <div class="r-val" id="spamCount">—</div>
+      <div class="r-lbl">Spam Detected</div>
+    </div>
+  </div>
+
+  <div class="r-stat" id="statSafe">
+    <div class="r-icon" style="background:rgba(0,255,198,0.1); color:var(--primary);"><i class="bi bi-shield-check"></i></div>
+    <div>
+      <div class="r-val" id="safeCount">—</div>
+      <div class="r-lbl">Safe Messages</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Filter Bar ── -->
+<div class="report-filter-bar">
+  <div class="search-box">
+    <i class="bi bi-search"></i>
+    <input type="text" id="searchInput" placeholder="Search messages or algorithms..."/>
+  </div>
+
+  <div class="filter-group">
+    <label>Input Type</label>
+    <select class="filter-select" id="typeFilter">
+      <option value="all">All Types</option>
+      <option value="text">Text</option>
+      <option value="image">Image</option>
+      <option value="voice">Voice</option>
+      <option value="vdo based">Video</option>
+    </select>
+  </div>
+
+  <div class="filter-group">
+    <label>Result</label>
+    <select class="filter-select" id="resultFilter">
+      <option value="all">All Results</option>
+      <option value="spam">Spam</option>
+      <option value="non-spam">Safe</option>
+    </select>
+  </div>
+
+  <button class="btn-sss-outline" onclick="clearFilters()">
+    <i class="bi bi-x-circle"></i> Clear
+  </button>
+</div>
+
+<!-- ── Table ── -->
+<div class="report-table-card">
+  <div class="card-header-sss">
+    <i class="bi bi-clock-history"></i>
+    <h5>Prediction History</h5>
+    <div class="total-count">
+      <strong id="visibleCount">{{ data|length }}</strong> records shown
+    </div>
+  </div>
+
+  <div style="overflow-x: auto;">
+    <table class="sss-table" id="reportTable">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Algorithm</th>
+          <th>Input Preview</th>
+          <th>Type</th>
+          <th>Result</th>
+          <th>Date & Time</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="reportBody">
+        {% for i in data %}
+        <tr class="report-row"
+            data-type="{{ i.input_type }}"
+            data-result="{{ i.prediction_result }}"
+            data-text="{{ i.input_text|lower }}"
+            data-algo="{{ i.algorithm_name|lower }}"
+            onclick="openModal('{{ i.algorithm_name|escapejs }}','{{ i.input_type|escapejs }}','{{ i.prediction_result|escapejs }}','{{ i.created_at }}','{{ i.input_text|escapejs }}')">
+          <td style="color:var(--text-muted); font-size:0.78rem;">{{ forloop.counter }}</td>
+          <td><span class="badge-algo">{{ i.algorithm_name }}</span></td>
+          <td>
+            <div class="text-truncate" style="max-width:220px;" title="{{ i.input_text }}">
+              {{ i.input_text }}
+            </div>
+          </td>
+          <td>
+            <span class="badge-type {{ i.input_type|slugify }}">
+              {% if i.input_type == 'vdo based' %}<i class="bi bi-camera-video me-1"></i>Video
+              {% elif i.input_type == 'image' %}<i class="bi bi-image me-1"></i>Image
+              {% elif i.input_type == 'voice' %}<i class="bi bi-mic me-1"></i>Voice
+              {% else %}<i class="bi bi-chat-text me-1"></i>Text
+              {% endif %}
+            </span>
+          </td>
+          <td>
+            {% if i.prediction_result == 'spam' %}
+              <span class="badge-spam"><i class="bi bi-exclamation-triangle me-1"></i>Spam</span>
+            {% else %}
+              <span class="badge-safe"><i class="bi bi-check2 me-1"></i>Safe</span>
+            {% endif %}
+          </td>
+          <td style="color:var(--text-muted); font-size:0.78rem; white-space:nowrap;">
+            {{ i.created_at|date:"M d, Y H:i" }}
+          </td>
+          <td>
+            <button class="view-btn" title="View details" onclick="event.stopPropagation(); openModal('{{ i.algorithm_name|escapejs }}','{{ i.input_type|escapejs }}','{{ i.prediction_result|escapejs }}','{{ i.created_at }}','{{ i.input_text|escapejs }}')">
+              <i class="bi bi-eye"></i>
+            </button>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <i class="bi bi-inbox"></i>
+              No predictions yet. Go to
+              <a href="{% url 'prediction' %}" style="color:var(--primary);">Spam Detection</a>
+              to run your first analysis.
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── Detail Modal ── -->
+<div class="sss-modal-overlay" id="reportModal" onclick="closeModalOnBg(event)">
+  <div class="sss-modal">
+    <div class="sss-modal-header">
+      <i class="bi bi-clipboard-check"></i>
+      <h4>Prediction Detail</h4>
+      <button class="modal-close" onclick="closeModal()"><i class="bi bi-x-lg"></i></button>
+    </div>
+    <div class="sss-modal-body">
+      <div class="row g-3">
+        <div class="col-6">
+          <div class="modal-field">
+            <label>Algorithm</label>
+            <div class="val"><span class="badge-algo" id="mAlgo"></span></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field">
+            <label>Input Type</label>
+            <div class="val" id="mType"></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field">
+            <label>Result</label>
+            <div class="val" id="mResult"></div>
+          </div>
+        </div>
+        <div class="col-6">
+          <div class="modal-field">
+            <label>Date & Time</label>
+            <div class="val" style="color:var(--text-muted); font-size:0.83rem;" id="mDate"></div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-divider"></div>
+      <div class="modal-field">
+        <label>Full Input Content</label>
+        <div class="modal-input-content" id="mInput"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  // ── Count spam/safe on load ──
+  window.addEventListener('DOMContentLoaded', () => {
+    const rows = document.querySelectorAll('.report-row');
+    let spam = 0, safe = 0;
+    rows.forEach(r => {
+      if (r.dataset.result === 'spam') spam++;
+      else safe++;
+    });
+    document.getElementById('spamCount').textContent = spam;
+    document.getElementById('safeCount').textContent = safe;
+    document.getElementById('visibleCount').textContent = rows.length;
+  });
+
+  // ── Filters ──
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase();
+    const type   = document.getElementById('typeFilter').value;
+    const result = document.getElementById('resultFilter').value;
+    const rows   = document.querySelectorAll('.report-row');
+    let visible  = 0;
+
+    rows.forEach(row => {
+      const matchSearch = !search ||
+        row.dataset.text.includes(search) ||
+        row.dataset.algo.includes(search);
+      const matchType   = type === 'all'   || row.dataset.type === type;
+      const matchResult = result === 'all' || row.dataset.result === result;
+
+      const show = matchSearch && matchType && matchResult;
+      row.style.display = show ? '' : 'none';
+      if (show) visible++;
+    });
+
+    document.getElementById('visibleCount').textContent = visible;
+  }
+
+  function clearFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value   = 'all';
+    document.getElementById('resultFilter').value  = 'all';
+    applyFilters();
+  }
+
+  document.getElementById('searchInput').addEventListener('input', applyFilters);
+  document.getElementById('typeFilter').addEventListener('change', applyFilters);
+  document.getElementById('resultFilter').addEventListener('change', applyFilters);
+
+  // ── Modal ──
+  function openModal(algo, type, result, date, input) {
+    document.getElementById('mAlgo').textContent   = algo;
+    document.getElementById('mDate').textContent   = date;
+    document.getElementById('mInput').textContent  = input;
+
+    // Type badge
+    const typeMap = { text: 'text', image: 'image', voice: 'voice', 'vdo based': 'vdo-based' };
+    const typeIcon = { text: 'chat-text', image: 'image', voice: 'mic', 'vdo based': 'camera-video' };
+    const typeLabel = { text: 'Text', image: 'Image', voice: 'Voice', 'vdo based': 'Video' };
+    document.getElementById('mType').innerHTML =
+      `<span class="badge-type ${typeMap[type]||'text'}"><i class="bi bi-${typeIcon[type]||'chat-text'} me-1"></i>${typeLabel[type]||type}</span>`;
+
+    // Result badge
+    document.getElementById('mResult').innerHTML = result === 'spam'
+      ? '<span class="badge-spam"><i class="bi bi-exclamation-triangle me-1"></i>Spam Detected</span>'
+      : '<span class="badge-safe"><i class="bi bi-check2 me-1"></i>Safe Message</span>';
+
+    document.getElementById('reportModal').classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+
+  function closeModal() {
+    document.getElementById('reportModal').classList.remove('open');
+    document.body.style.overflow = '';
+  }
+
+  function closeModalOnBg(e) {
+    if (e.target === document.getElementById('reportModal')) closeModal();
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+</script>
+{% endblock %}

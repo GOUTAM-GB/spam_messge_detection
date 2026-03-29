@@ -1,0 +1,301 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Login — SpamScamShield{% endblock %}
+
+{% block extra_head %}
+<style>
+  .auth-section {
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Background grid */
+  .auth-section::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,255,198,0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,198,0.035) 1px, transparent 1px);
+    background-size: 44px 44px;
+    mask-image: radial-gradient(ellipse 70% 80% at 50% 50%, black 20%, transparent 80%);
+    pointer-events: none;
+  }
+
+  .auth-card {
+    width: 100%;
+    max-width: 440px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    box-shadow: 0 24px 80px rgba(0,0,0,0.5);
+    padding: 2.5rem 2rem;
+    position: relative;
+    z-index: 1;
+    animation: fadeUp 0.5s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Top accent line */
+  .auth-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 20%; right: 20%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--primary), transparent);
+    border-radius: 999px;
+  }
+
+  .auth-logo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-bottom: 1.8rem;
+  }
+
+  .auth-logo svg {
+    width: 52px;
+    height: 52px;
+    margin-bottom: 0.8rem;
+  }
+
+  .auth-logo h1 {
+    font-family: var(--font-head);
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    margin: 0;
+  }
+
+  .auth-logo h1 span { color: var(--primary); }
+
+  .auth-logo p {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-top: 0.3rem;
+  }
+
+  /* Role toggle tabs */
+  .role-tabs {
+    display: flex;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 4px;
+    margin-bottom: 1.8rem;
+  }
+
+  .role-tab {
+    flex: 1;
+    padding: 0.55rem;
+    text-align: center;
+    border-radius: 9px;
+    font-size: 0.83rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.22s;
+    color: var(--text-muted);
+    user-select: none;
+  }
+
+  .role-tab.active {
+    background: var(--primary);
+    color: #050b18;
+  }
+
+  .form-group { margin-bottom: 1.1rem; }
+
+  .input-icon-wrap {
+    position: relative;
+  }
+
+  .input-icon-wrap .sss-input {
+    padding-left: 2.6rem !important;
+  }
+
+  .input-icon-wrap .field-icon {
+    position: absolute;
+    left: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    pointer-events: none;
+    z-index: 2;
+  }
+
+  .pw-toggle {
+    position: absolute;
+    right: 0.9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.9rem;
+    z-index: 2;
+    transition: color 0.2s;
+  }
+
+  .pw-toggle:hover { color: var(--primary); }
+
+  .submit-btn {
+    width: 100%;
+    margin-top: 0.5rem;
+    padding: 0.8rem;
+    font-size: 1rem;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+  }
+
+  .auth-footer {
+    text-align: center;
+    margin-top: 1.4rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+  }
+
+  .auth-footer a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 600;
+  }
+
+  .auth-footer a:hover { text-decoration: underline; }
+
+  /* Hint box for admin */
+  .hint-box {
+    background: rgba(0,255,198,0.06);
+    border: 1px dashed rgba(0,255,198,0.2);
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin-bottom: 1.2rem;
+    display: none;
+  }
+
+  .hint-box.show { display: block; }
+  .hint-box span { color: var(--primary); font-weight: 600; }
+</style>
+{% endblock %}
+
+{% block contents %}
+<section class="auth-section">
+  <div class="auth-card">
+
+    <!-- Logo -->
+    <div class="auth-logo">
+      <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="40" height="40" rx="10" fill="#050b18"/>
+        <path d="M20 4 L34 10 V20 C34 28 27 34.5 20 37 C13 34.5 6 28 6 20 V10 Z"
+              fill="none" stroke="#0ff4c6" stroke-width="2" stroke-linejoin="round"/>
+        <path d="M14 20 L18 24 L26 16" stroke="#0ff4c6" stroke-width="2.2"
+              stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="20" cy="20" r="3" fill="rgba(0,255,198,0.15)" stroke="#0ff4c6" stroke-width="1"/>
+      </svg>
+      <h1>Spam<span>Scam</span>Shield</h1>
+      <p>Sign in to your account</p>
+    </div>
+
+    <!-- Role tabs -->
+    <div class="role-tabs">
+      <div class="role-tab active" id="tabUser" onclick="switchRole('user')">
+        <i class="bi bi-person me-1"></i>User
+      </div>
+      <div class="role-tab" id="tabAdmin" onclick="switchRole('admin')">
+        <i class="bi bi-shield-lock me-1"></i>Admin
+      </div>
+    </div>
+
+    <!-- Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="sss-alert sss-alert-danger mb-3">
+          <i class="bi bi-exclamation-triangle me-2"></i>{{ message }}
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Admin hint -->
+    <div class="hint-box" id="adminHint">
+      Admin credentials: ID = <span>admin</span> / Password = <span>admin</span>
+    </div>
+
+    <!-- Login form -->
+    <form action="{% url 'LoginCheck' %}" method="post" id="loginForm">
+      {% csrf_token %}
+      <!-- Hidden field to tell backend the role -->
+      <input type="hidden" name="role" id="roleField" value="user"/>
+
+      <div class="form-group">
+        <label class="sss-label">Login ID / Username</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-person field-icon"></i>
+          <input type="text" name="loginid" class="sss-input"
+                 placeholder="Enter your login ID" required autocomplete="username"/>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="sss-label">Password</label>
+        <div class="input-icon-wrap">
+          <i class="bi bi-lock field-icon"></i>
+          <input type="password" name="pswd" class="sss-input" id="pwInput"
+                 placeholder="Enter your password" required autocomplete="current-password"/>
+          <button type="button" class="pw-toggle" id="pwToggle" onclick="togglePw()">
+            <i class="bi bi-eye" id="pwIcon"></i>
+          </button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-primary-sss submit-btn">
+        <i class="bi bi-box-arrow-in-right"></i>
+        <span id="loginBtnText">Sign In</span>
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Don't have an account?
+      <a href="{% url 'UserRegister' %}">Create one free</a>
+    </div>
+
+  </div>
+</section>
+
+<script>
+  function switchRole(role) {
+    const isAdmin = role === 'admin';
+    document.getElementById('tabUser').classList.toggle('active', !isAdmin);
+    document.getElementById('tabAdmin').classList.toggle('active', isAdmin);
+    document.getElementById('roleField').value = role;
+    document.getElementById('adminHint').classList.toggle('show', isAdmin);
+    document.getElementById('loginBtnText').textContent = isAdmin ? 'Admin Sign In' : 'Sign In';
+  }
+
+  function togglePw() {
+    const inp = document.getElementById('pwInput');
+    const ico = document.getElementById('pwIcon');
+    const show = inp.type === 'password';
+    inp.type  = show ? 'text' : 'password';
+    ico.className = show ? 'bi bi-eye-slash' : 'bi bi-eye';
+  }
+</script>
+{% endblock %}
