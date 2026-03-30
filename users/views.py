@@ -234,10 +234,7 @@ spam (0), Not Spam (1).
 '''
 
 
-reader = None
-
 def prediction(request):
-    global reader
     if request.method == 'POST':
         single_tweet = request.POST.get('tweets', '') 
         screenshot = request.FILES.get('screenshot')
@@ -261,27 +258,23 @@ def prediction(request):
                 print("Error decoding camera data:", str(e))
 
         if ocr_images:
-            import easyocr
-            import numpy as np
+            import pytesseract
+            import os
             from PIL import Image
-            import ssl
-            ssl._create_default_https_context = ssl._create_unverified_context
-            if reader is None:
-                import sys, io
-                old_stdout = sys.stdout
-                sys.stdout = io.StringIO()  
-                try:
-                    reader = easyocr.Reader(['en'], gpu=False)  
-                finally:
-                    sys.stdout = old_stdout
             
+            # Configure Tesseract path for Windows (local) vs Linux (Railway)
+            if os.name == 'nt':
+                # Local Windows path where Tesseract will be installed
+                pytesseract.pytesseract.tesseract_cmd = r'C:\Program Files\Tesseract-OCR\tesseract.exe'
+            # (On Railway Linux, the default system PATH works out-of-the-box!)
+                
             all_extracted = []
             for img_source in ocr_images:
                 try:
                     img = Image.open(img_source).convert('RGB')
-                    img_np = np.array(img)
-                    result = reader.readtext(img_np, detail=0)
-                    all_extracted.extend(result)
+                    text = pytesseract.image_to_string(img)
+                    if text.strip():
+                        all_extracted.append(text.strip())
                 except Exception as e:
                     print(f"Error OCR: {str(e)}")
             
