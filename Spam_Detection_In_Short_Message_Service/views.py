@@ -30,7 +30,7 @@ def LoginCheck(request):
         if loginid == 'admin' and pswd == 'admin':
             log = UserActivityLog.objects.create(user_loginid='admin', user_role='Admin')
             request.session['log_id'] = log.id
-            return render(request, 'admins/AdminHome.html', {})
+            return redirect('AdminHome')
             
         # Check database for registered users/admins
         try:
@@ -44,9 +44,9 @@ def LoginCheck(request):
                 request.session['log_id'] = log.id
                 
                 if check.role.lower() == 'admin':
-                    return render(request, 'admins/AdminHome.html', {})
+                    return redirect('AdminHome')
                 else:
-                    return render(request, 'users/UserHomePage.html', {})
+                    return redirect('UserHome')
             else:
                 messages.success(request, 'Your Account is not activated')
                 return render(request, 'UserLogin.html', {})
